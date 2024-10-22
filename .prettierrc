@@ -6,7 +6,7 @@
   "quoteProps": "as-needed",
   "requirePragma": false,
   "singleQuote": true,
-  "useTabs": false,
+  "useTabs": true,
   "tabWidth": 2,
   "trailingComma": "none",
   "endOfLine": "auto"
