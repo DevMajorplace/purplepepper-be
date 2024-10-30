@@ -5,6 +5,11 @@ import { IsDate, IsNotEmpty, IsString } from 'class-validator';
 export class BoardItemDto {
 	@IsString()
 	@IsNotEmpty()
+	@ApiProperty({ description: '게시글 id' })
+	public readonly id: string;
+
+	@IsString()
+	@IsNotEmpty()
 	@ApiProperty({ description: '카테고리' })
 	public readonly category: string;
 	@IsString()

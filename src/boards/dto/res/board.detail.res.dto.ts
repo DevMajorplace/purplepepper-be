@@ -4,6 +4,11 @@ import { IsArray, IsDate, IsNotEmpty, IsString } from 'class-validator';
 export class BoardDetailResDto {
 	@IsString()
 	@IsNotEmpty()
+	@ApiProperty({ description: '게시글 id' })
+	public readonly id: string;
+
+	@IsString()
+	@IsNotEmpty()
 	@ApiProperty({ description: '카테고리' })
 	public readonly category: string;
 
@@ -29,4 +34,8 @@ export class BoardDetailResDto {
 	@IsDate()
 	@ApiProperty({ description: '게시글 등록일' })
 	public readonly created_at: Date;
+
+	constructor(partial: Partial<BoardDetailResDto>) {
+		Object.assign(this, partial);
+	}
 }
