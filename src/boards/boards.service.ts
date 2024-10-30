@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { BoardItemDto } from './dto/board.item.dto';
-import { CreateBoardReqDto } from './dto/req/create.board.req.dto';
+import { BoardReqDto } from './dto/req/board.req.dto';
 import { BoardListResDto } from './dto/res/board.list.res.dto';
 import { Board } from './schemas/board.schema';
 
@@ -27,8 +27,18 @@ export class BoardsService {
 	}
 
 	//생성
-	async createBoard(board: CreateBoardReqDto): Promise<Board> {
+	async createBoard(board: BoardReqDto): Promise<Board> {
 		const newBoard = new this.boardModel(board);
 		return await newBoard.save();
+	}
+
+	//수정
+	async updateBoard(id: string, board: BoardReqDto): Promise<Board> {
+		return await this.boardModel.findByIdAndUpdate(id, board, { new: true }).exec();
+	}
+
+	//삭제
+	async deleteBoard(id: string): Promise<Board> {
+		return await this.boardModel.findByIdAndDelete(id).exec();
 	}
 }

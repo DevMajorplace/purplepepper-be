@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { BoardsService } from './boards.service';
-import { CreateBoardReqDto } from './dto/req/create.board.req.dto';
+import { BoardReqDto } from './dto/req/board.req.dto';
 import { BoardListResDto } from './dto/res/board.list.res.dto';
 import { Board } from './schemas/board.schema';
 
@@ -18,7 +18,19 @@ export class BoardsController {
 
 	@Post()
 	@ApiResponse({ type: Board })
-	async createBoard(@Body() board: CreateBoardReqDto): Promise<Board> {
+	async createBoard(@Body() board: BoardReqDto): Promise<Board> {
 		return this.boardService.createBoard(board);
+	}
+
+	@Put(':id')
+	@ApiResponse({ type: Board })
+	async updateBoard(@Param('id') id: string, @Body() board: BoardReqDto): Promise<Board> {
+		return this.boardService.updateBoard(id, board);
+	}
+
+	@Post(':id')
+	@ApiResponse({ type: Board })
+	async deleteBoard(@Param('id') id: string): Promise<Board> {
+		return this.boardService.deleteBoard(id);
 	}
 }

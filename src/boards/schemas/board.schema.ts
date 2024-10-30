@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema({ timestamps: { createdAt: 'created_at', updatedAt: false } })
+@Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } })
 export class Board extends Document {
 	@Prop({ type: String, required: true })
 	category: string;
@@ -20,9 +20,6 @@ export class Board extends Document {
 
 	@Prop({ type: Date, default: null })
 	deleted_at?: Date;
-
-	@Prop({ type: Date, default: null })
-	updated_at?: Date;
 
 	created_at: Date;
 }
