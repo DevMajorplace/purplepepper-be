@@ -15,7 +15,7 @@ async function bootstrap() {
 	app.enableCors({
 		origin: '*',
 		methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-		credentials: true
+		credentials: true,
 	});
 
 	const configService = app.get(ConfigService);
@@ -28,7 +28,7 @@ async function bootstrap() {
 		['/docs', '/docs-json'],
 		expressBasicAuth({
 			challenge: true,
-			users: { [swaggerUser]: swaggerPassword }
+			users: { [swaggerUser]: swaggerPassword },
 		}),
 		session({
 			secret: sessionSecret,
@@ -37,9 +37,9 @@ async function bootstrap() {
 			cookie: {
 				secure: false, // production 환경에서는 true로 설정
 				httpOnly: true,
-				maxAge: 1000 * 60 * 60 * 24 // 1일
-			}
-		})
+				maxAge: 1000 * 60 * 60 * 24, // 1일
+			},
+		}),
 	);
 
 	const config = new DocumentBuilder()

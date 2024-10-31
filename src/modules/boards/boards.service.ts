@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { ERROR_MESSAGE_BOARD_NOT_FOUND } from '../../common/constants/error-messages';
 import { BoardItemDto } from './dto/board.item.dto';
 import { BoardReqDto } from './dto/req/board.req.dto';
 import { BoardDetailResDto } from './dto/res/board.detail.res.dto';
@@ -20,8 +21,8 @@ export class BoardsService {
 					id: board.id,
 					category: board.category,
 					title: board.title,
-					created_at: board.created_at
-				})
+					created_at: board.created_at,
+				}),
 		);
 
 		const boardList = new BoardListResDto(items);
@@ -32,7 +33,7 @@ export class BoardsService {
 	async getBoardById(id: string): Promise<BoardDetailResDto> {
 		const board = await this.boardModel.findById(id).exec();
 		if (!board) {
-			throw new NotFoundException('해당 게시글을 찾을 수 없습니다.');
+			throw new NotFoundException(ERROR_MESSAGE_BOARD_NOT_FOUND);
 		}
 
 		return new BoardDetailResDto({
@@ -42,7 +43,7 @@ export class BoardsService {
 			content: board.content,
 			visible: board.visible,
 			file_urls: board.file_urls,
-			created_at: board.created_at
+			created_at: board.created_at,
 		});
 	}
 
@@ -54,12 +55,10 @@ export class BoardsService {
 
 	//수정
 	async updateBoard(id: string, boardReqDto: BoardReqDto): Promise<BoardDetailResDto> {
-		const updatedBoard = await this.boardModel
-			.findByIdAndUpdate(id, boardReqDto, { new: true })
-			.exec();
+		const updatedBoard = await this.boardModel.findByIdAndUpdate(id, boardReqDto, { new: true }).exec();
 
 		if (!updatedBoard) {
-			throw new NotFoundException('해당 게시글을 찾을 수 없습니다.');
+			throw new NotFoundException(ERROR_MESSAGE_BOARD_NOT_FOUND);
 		}
 
 		return new BoardDetailResDto({
@@ -69,7 +68,7 @@ export class BoardsService {
 			content: updatedBoard.content,
 			visible: updatedBoard.visible,
 			file_urls: updatedBoard.file_urls,
-			created_at: updatedBoard.created_at
+			created_at: updatedBoard.created_at,
 		});
 	}
 
@@ -78,7 +77,7 @@ export class BoardsService {
 		const deletedBoard = await this.boardModel.findByIdAndDelete(id).exec();
 
 		if (!deletedBoard) {
-			throw new NotFoundException('해당 게시글을 찾을 수 없습니다.');
+			throw new NotFoundException(ERROR_MESSAGE_BOARD_NOT_FOUND);
 		}
 
 		return new BoardDetailResDto({
@@ -88,7 +87,7 @@ export class BoardsService {
 			content: deletedBoard.content,
 			visible: deletedBoard.visible,
 			file_urls: deletedBoard.file_urls,
-			created_at: deletedBoard.created_at
+			created_at: deletedBoard.created_at,
 		});
 	}
 }

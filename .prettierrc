@@ -1,13 +1,14 @@
 {
 	"arrowParens": "avoid",
 	"bracketSpacing": true,
-	"printWidth": 100,
+	"printWidth": 120,
 	"proseWrap": "preserve",
 	"quoteProps": "as-needed",
 	"requirePragma": false,
 	"singleQuote": true,
 	"useTabs": true,
 	"tabWidth": 2,
-	"trailingComma": "none",
+	"semi": true,
+	"trailingComma": "all",
 	"endOfLine": "lf"
 }
