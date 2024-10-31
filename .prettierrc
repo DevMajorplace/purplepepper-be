@@ -1,13 +1,13 @@
 {
-  "arrowParens": "avoid",
-  "bracketSpacing": true,
-  "printWidth": 100,
-  "proseWrap": "preserve",
-  "quoteProps": "as-needed",
-  "requirePragma": false,
-  "singleQuote": true,
-  "useTabs": true,
-  "tabWidth": 2,
-  "trailingComma": "none",
-  "endOfLine": "auto"
+	"arrowParens": "avoid",
+	"bracketSpacing": true,
+	"printWidth": 100,
+	"proseWrap": "preserve",
+	"quoteProps": "as-needed",
+	"requirePragma": false,
+	"singleQuote": true,
+	"useTabs": true,
+	"tabWidth": 2,
+	"trailingComma": "none",
+	"endOfLine": "lf"
 }
