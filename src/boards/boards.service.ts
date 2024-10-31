@@ -53,12 +53,42 @@ export class BoardsService {
 	}
 
 	//수정
-	async updateBoard(id: string, board: BoardReqDto): Promise<Board> {
-		return await this.boardModel.findByIdAndUpdate(id, board, { new: true }).exec();
+	async updateBoard(id: string, boardReqDto: BoardReqDto): Promise<BoardDetailResDto> {
+		const updatedBoard = await this.boardModel
+			.findByIdAndUpdate(id, boardReqDto, { new: true })
+			.exec();
+
+		if (!updatedBoard) {
+			throw new NotFoundException('해당 게시글을 찾을 수 없습니다.');
+		}
+
+		return new BoardDetailResDto({
+			id: updatedBoard._id.toString(),
+			category: updatedBoard.category,
+			title: updatedBoard.title,
+			content: updatedBoard.content,
+			visible: updatedBoard.visible,
+			file_urls: updatedBoard.file_urls,
+			created_at: updatedBoard.created_at
+		});
 	}
 
 	//삭제
-	async deleteBoard(id: string): Promise<Board> {
-		return await this.boardModel.findByIdAndDelete(id).exec();
+	async deleteBoard(id: string): Promise<BoardDetailResDto> {
+		const deletedBoard = await this.boardModel.findByIdAndDelete(id).exec();
+
+		if (!deletedBoard) {
+			throw new NotFoundException('해당 게시글을 찾을 수 없습니다.');
+		}
+
+		return new BoardDetailResDto({
+			id: deletedBoard._id.toString(),
+			category: deletedBoard.category,
+			title: deletedBoard.title,
+			content: deletedBoard.content,
+			visible: deletedBoard.visible,
+			file_urls: deletedBoard.file_urls,
+			created_at: deletedBoard.created_at
+		});
 	}
 }

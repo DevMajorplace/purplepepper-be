@@ -23,7 +23,7 @@ export class BoardItemDto {
 
 	@IsString()
 	@ApiProperty({ description: '첨부파일 url' })
-	public readonly url: string;
+	public readonly file_urls: string[];
 
 	@IsDate()
 	@Type(() => Date)
