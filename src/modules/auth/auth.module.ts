@@ -1,16 +1,22 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './guards/auth.guard';
 
 @Module({
 	imports: [
-		JwtModule.register({
-			secret: process.env.JWT_ACCESS_SECRET, // 환경 변수에서 가져온 비밀 키
-			signOptions: { expiresIn: '15m' },
+		ConfigModule, // ConfigModule 추가
+		JwtModule.registerAsync({
+			imports: [ConfigModule],
+			inject: [ConfigService],
+			useFactory: async (configService: ConfigService) => ({
+				secret: configService.get<string>('JWT_ACCESS_SECRET'),
+				signOptions: { expiresIn: '15m' },
+			}),
 		}),
 	],
 	providers: [AuthService, AuthGuard],
-	exports: [AuthService], // AuthService를 export하여 다른 모듈에서 사용할 수 있게 함
+	exports: [AuthService],
 })
 export class AuthModule {}
