@@ -53,7 +53,7 @@ async function bootstrap() {
 	SwaggerModule.setup('docs', app, document);
 
 	const port = configService.get('PORT') || 3200;
-	await app.listen(port);
+	await app.listen(port, '0.0.0.0');
 	console.info(`purplepepper Backend started on port : ${port}`);
 
 	if (module.hot) {
