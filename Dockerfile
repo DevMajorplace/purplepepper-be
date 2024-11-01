@@ -1,14 +1,20 @@
+# Use a specific platform and Node.js version.
 FROM --platform=linux/amd64 node:18.2
 
-# Creating an app directory.
-RUN mkdir -p /var/app
+# Set the working directory inside the container.
 WORKDIR /var/app
-COPY . .
 
-# Installing app dependencies.
+# Copy only package.json and package-lock.json first for better caching of npm install.
 COPY package*.json ./
+
+# Install app dependencies.
 RUN npm install
 
+# Copy the rest of the application code to the container.
+COPY . .
 
-EXPOSE 3030
-CMD [ "npm", "run", "start:dev" ]
+# Expose the port your app runs on.
+EXPOSE 3000
+
+# Command to start the application.
+CMD ["npm", "run", "start"]
