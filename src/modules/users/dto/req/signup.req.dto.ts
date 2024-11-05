@@ -4,7 +4,7 @@ import { IsArray, IsEnum, IsNotEmpty, IsString } from 'class-validator';
 export enum Role {
 	Admin = 'admin',
 	Agency = 'agency',
-	Client = 'client'
+	Client = 'client',
 }
 
 export class SignUpReqDto {
