@@ -5,6 +5,7 @@ import { Model } from 'mongoose';
 import {
 	ERROR_MESSAGE_DUPLICATE_ID,
 	ERROR_MESSAGE_HASH_FAILED,
+	ERROR_MESSAGE_INVALID_ROLE,
 	ERROR_MESSAGE_USER_LOGIN_FAILED,
 } from '../../common/constants/error-messages';
 import { AuthService } from '../auth/auth.service';
@@ -29,34 +30,26 @@ export class UsersService {
 			throw new BadRequestException(ERROR_MESSAGE_DUPLICATE_ID);
 		}
 
-		// PASS 본인인증 로직 필요
+		// PASS 본인인증 로직 필요 -> client 단계에서 처리하고 넘어오지 않을까 예상하고 작업
 		// 비밀번호 해시 및 에러 처리
 		const hashedPassword = await bcrypt.hash(user.password, 10).catch(() => {
 			throw new InternalServerErrorException(ERROR_MESSAGE_HASH_FAILED);
 		});
 
 		// 역할에 따른 승인 상태 및 필드 설정
-		let approvedAt = undefined;
-		let valid = undefined;
-		let status: 'approved' | 'pending';
+		if (user.role !== 'admin' && user.role !== 'agency' && user.role !== 'client')
+			throw new BadRequestException(ERROR_MESSAGE_INVALID_ROLE);
 
-		//admin, agency는 바로 승인 (추후 어드민 계정이 다중계정이 될 때를 고려)
-		if (user.role === 'admin' || user.role === 'agency') {
-			approvedAt = new Date();
-			valid = true;
-			status = 'approved';
-		} else if (user.role === 'client') {
-			status = 'pending';
-		} else {
-			throw new BadRequestException('유효하지 않은 역할입니다.');
-		}
+		// 관리자 또는 총판 역할인 경우 승인 처리 (추후 관리자 계정이 다중계정이 될 때를 고려)
+		let status: 'approved' | 'pending' = 'pending';
+		if (user.role === 'admin' || user.role === 'agency') status = 'approved';
 
 		// 새로운 사용자 생성
 		const newUser = new this.userModel({
 			...user,
 			password: hashedPassword,
-			approved_at: approvedAt,
-			valid: valid,
+			approved_at: status === 'approved' ? new Date() : undefined,
+			valid: status === 'approved' ? true : false,
 		});
 		await newUser.save();
 
