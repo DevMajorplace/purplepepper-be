@@ -40,14 +40,11 @@ export class UsersService {
 			throw new BadRequestException(ERROR_MESSAGE_DUPLICATE_ID);
 		}
 
-		// PASS 본인인증 로직 필요
+		// PASS 본인인증 로직 필요 -> client 단계에서 처리하고 넘어오지 않을까 예상하고 작업
 		// 비밀번호 해시 및 에러 처리
 		const hashedPassword = await bcrypt.hash(user.password, 10).catch(() => {
 			throw new InternalServerErrorException(ERROR_MESSAGE_HASH_FAILED);
 		});
-
-		let approvedAt = undefined;
-		let valid = undefined;
 
 		// 역할에 따른 승인 상태 및 필드 설정
 		if (user.role !== 'admin' && user.role !== 'agency' && user.role !== 'client')
@@ -61,8 +58,8 @@ export class UsersService {
 		const newUser = new this.userModel({
 			...user,
 			password: hashedPassword,
-			approved_at: approvedAt,
-			valid: valid,
+			approved_at: status === 'approved' ? new Date() : undefined,
+			status,
 		});
 		await newUser.save();
 

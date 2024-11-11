@@ -9,11 +9,11 @@ import { MongooseService } from './mongoose.service';
 			imports: [ConfigModule],
 			inject: [ConfigService],
 			useFactory: async (configService: ConfigService) => ({
-				uri: configService.get<string>('MONGO_URI')
-			})
-		})
+				uri: configService.get<string>('MONGO_URI'),
+			}),
+		}),
 	],
 	providers: [MongooseService],
-	exports: [MongooseService]
+	exports: [MongooseService],
 })
 export class MongooseDatabaseModule {}
