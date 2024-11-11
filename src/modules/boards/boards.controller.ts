@@ -31,10 +31,7 @@ export class BoardsController {
 
 	@Put(':id')
 	@ApiResponse({ type: BoardDetailResDto })
-	async updateBoard(
-		@Param('id') id: string,
-		@Body() board: BoardReqDto
-	): Promise<BoardDetailResDto> {
+	async updateBoard(@Param('id') id: string, @Body() board: BoardReqDto): Promise<BoardDetailResDto> {
 		return this.boardService.updateBoard(id, board);
 	}
 
