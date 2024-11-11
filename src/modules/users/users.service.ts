@@ -49,7 +49,7 @@ export class UsersService {
 			...user,
 			password: hashedPassword,
 			approved_at: status === 'approved' ? new Date() : undefined,
-			valid: status === 'approved' ? true : false,
+			status,
 		});
 		await newUser.save();
 
