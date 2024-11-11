@@ -48,11 +48,14 @@ export class User extends Document {
 	@Prop()
 	memo: string;
 
-	@Prop()
-	valid: boolean;
+	@Prop({ enum: ['approved', 'pending', 'declined'], required: true })
+	status: string;
 
 	@Prop()
 	approved_at: Date;
+
+	@Prop()
+	declined_at: Date;
 
 	@Prop()
 	deleted_at: Date;
