@@ -123,15 +123,19 @@ export class UsersService {
 			throw new NotFoundException(ERROR_MESSAGE_USERS_NOT_FOUND(missingUserIds.join(', ')));
 		}
 
-		// 승인 또는 거절 상태에 따른 업데이트 필드 구성
+		// 이미 요청한 상태와 동일한 경우 업데이트 생략
+		const usersToUpdate = users.filter(user => user.status !== status);
 		const updateFields = {
 			status,
 			approved_at: status === 'approved' ? new Date() : null,
 			declined_at: status === 'declined' ? new Date() : null,
 		};
 
-		// 존재하는 사용자들에 대해 상태 업데이트
-		await this.userModel.updateMany({ user_id: { $in: foundUserIds } }, updateFields).exec();
+		// 업데이트할 사용자가 있는 경우에만 상태 업데이트
+		if (usersToUpdate.length > 0) {
+			const userIdsToUpdate = usersToUpdate.map(user => user.user_id);
+			await this.userModel.updateMany({ user_id: { $in: userIdsToUpdate } }, updateFields).exec();
+		}
 
 		// 업데이트 후 최신 사용자 상태 다시 조회
 		const updatedUsers = await this.userModel.find({ user_id: { $in: foundUserIds } }).exec();

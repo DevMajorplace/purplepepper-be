@@ -13,4 +13,3 @@ export const ERROR_MESSAGE_BOARD_NOT_FOUND = '해당 게시글을 찾을 수 없
 // Auth
 export const ERROR_MESSAGE_INVALID_TOKEN = '유효한 토큰이 아닙니다.';
 export const ERROR_MESSAGE_NO_TOKEN = '토큰이 없습니다.';
-

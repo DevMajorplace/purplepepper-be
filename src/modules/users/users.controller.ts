@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Query } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LoginReqDto } from './dto/req/login.req.dto';
 import { SignUpReqDto } from './dto/req/signup.req.dto';
@@ -33,7 +33,7 @@ export class UsersController {
 	}
 
 	// 가입 승인(단일, 다중 사용자)
-	@Put('approve')
+	@Patch('approve')
 	async approveUsers(
 		@Body() userIds: string[],
 	): Promise<{ updatedUsers: UserStatusUpdateResDto[]; missingUserIds: string[] }> {
@@ -41,7 +41,7 @@ export class UsersController {
 	}
 
 	// 가입 거절(단일, 다중 사용자)
-	@Put('decline')
+	@Patch('decline')
 	async declineUsers(
 		@Body() userIds: string[],
 	): Promise<{ updatedUsers: UserStatusUpdateResDto[]; missingUserIds: string[] }> {

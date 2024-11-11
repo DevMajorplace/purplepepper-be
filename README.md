@@ -1,6 +1,6 @@
 # purplepepper-be
-Purplepepper Back Office BE
 
+Purplepepper Back Office BE
 
 ## Project setup
 
