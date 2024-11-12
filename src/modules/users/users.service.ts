@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import {
+	BadRequestException,
+	Injectable,
+	InternalServerErrorException,
+	Req,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
@@ -6,18 +12,22 @@ import {
 	ERROR_MESSAGE_DUPLICATE_ID,
 	ERROR_MESSAGE_HASH_FAILED,
 	ERROR_MESSAGE_INVALID_ROLE,
+	ERROR_MESSAGE_STATUS_DECLINED,
+	ERROR_MESSAGE_STATUS_PENDING,
 	ERROR_MESSAGE_USER_LOGIN_FAILED,
 } from '../../common/constants/error-messages';
 import { AuthService } from '../auth/auth.service';
 import { LoginReqDto } from './dto/req/login.req.dto';
 import { SignUpReqDto } from './dto/req/signup.req.dto';
 import { SignUpResDto } from './dto/res/signup.res.dto';
+import { LoginLog } from './schemas/login-log.schema';
 import { User } from './schemas/user.schema';
 
 @Injectable()
 export class UsersService {
 	constructor(
 		@InjectModel(User.name) private readonly userModel: Model<User>,
+		@InjectModel(LoginLog.name) private readonly loginLogModel: Model<LoginLog>,
 		private readonly authService: AuthService,
 	) {}
 
@@ -65,23 +75,57 @@ export class UsersService {
 	}
 
 	// 로그인
-	async login(user: LoginReqDto): Promise<{ accessToken: string }> {
+	async login(user: LoginReqDto, @Req() req: any): Promise<{ accessToken: string }> {
 		const userId = user.user_id;
 		const password = user.password;
 
-		// 사용자 존재 여부 및 비밀번호 검증
-		const existedUser = await this.findByUserId(userId);
-		const validatePassword = await bcrypt.compare(password, existedUser.password);
-		if (!existedUser || !validatePassword) {
+		// 사용자 존재 여부 확인
+		const existedUser = await this.userModel.findOne({ user_id: userId }).exec();
+		if (!existedUser) {
 			throw new UnauthorizedException(ERROR_MESSAGE_USER_LOGIN_FAILED);
 		}
 
-		const role = existedUser.role;
-		const payload = { userId: userId, role: role };
+		// 승인 상태 확인
+		if (existedUser.status === 'declined') {
+			throw new UnauthorizedException(ERROR_MESSAGE_STATUS_DECLINED);
+		} else if (existedUser.status === 'pending') {
+			throw new UnauthorizedException(ERROR_MESSAGE_STATUS_PENDING);
+		}
 
-		// 인증, 권한 로직은 모두 auth에서 처리
-		const accessToken = this.authService.createToken(payload);
+		try {
+			const isValidPassword = await bcrypt.compare(password, existedUser.password);
+			const IPAddress = req.ip;
+			const deviceId = req.headers['user-agent'];
+			const loginLog = {
+				user_idx: existedUser._id,
+				login_timestamp: new Date(),
+				login_ip: IPAddress,
+				device_id: deviceId,
+				login_success: isValidPassword,
+			};
 
-		return { accessToken };
+			if (isValidPassword) {
+				const payload = { userId: userId, role: existedUser.role };
+				const accessToken = this.authService.createToken(payload);
+
+				// 로그인 성공 시 로그 추가 및 실패 횟수 초기화
+				await this.loginLogModel.create(loginLog);
+				await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: 0 } });
+
+				return { accessToken };
+			}
+
+			// 실패 시 최신 `login_failed` 값을 재계산
+			const updatedUser = await this.userModel.findById(existedUser._id).exec();
+			const updatedLoginFailedCount = (updatedUser?.login_failed || 0) + 1;
+
+			// 실패 로그 추가 및 실패 횟수 증가
+			await this.loginLogModel.create(loginLog);
+			await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: updatedLoginFailedCount } });
+
+			throw new UnauthorizedException(ERROR_MESSAGE_USER_LOGIN_FAILED);
+		} catch (error) {
+			throw error;
+		}
 	}
 }
