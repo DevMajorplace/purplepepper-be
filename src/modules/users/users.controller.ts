@@ -1,11 +1,8 @@
-import { Body, Controller, Get, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Post } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LoginReqDto } from './dto/req/login.req.dto';
 import { SignUpReqDto } from './dto/req/signup.req.dto';
 import { SignUpResDto } from './dto/res/signup.res.dto';
-import { UserStatusResDto } from './dto/res/user.status.res.dto';
-import { UserStatusUpdateResDto } from './dto/res/user.status.update.res.dto';
-import { UserStatusQueryDto } from './dto/user-status-query.dto';
 import { UsersService } from './users.service';
 
 @ApiTags('Users')
@@ -24,27 +21,5 @@ export class UsersController {
 	@Post('login')
 	async login(@Body() user: LoginReqDto): Promise<{ accessToken: string }> {
 		return this.usersService.login(user);
-	}
-
-	// 가입 대기/거절 회원 조회
-	@Get('status')
-	async findUsersByStatus(@Query() query: UserStatusQueryDto): Promise<UserStatusResDto[]> {
-		return this.usersService.findUsersByStatus(query.status);
-	}
-
-	// 가입 승인(단일, 다중 사용자)
-	@Patch('approve')
-	async approveUsers(
-		@Body() userIds: string[],
-	): Promise<{ updatedUsers: UserStatusUpdateResDto[]; missingUserIds: string[] }> {
-		return this.usersService.updateUserStatus(userIds, 'approved');
-	}
-
-	// 가입 거절(단일, 다중 사용자)
-	@Patch('decline')
-	async declineUsers(
-		@Body() userIds: string[],
-	): Promise<{ updatedUsers: UserStatusUpdateResDto[]; missingUserIds: string[] }> {
-		return this.usersService.updateUserStatus(userIds, 'declined');
 	}
 }
