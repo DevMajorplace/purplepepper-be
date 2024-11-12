@@ -4,6 +4,8 @@ import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
 import { UserStatusQueryDto } from '../admin/dto/user-status-query.dto';
 import { AdminService } from './admin.service';
+import { ClientListReqDto } from './dto/req/client.list.req.dto';
+import { ClientListResDto } from './dto/res/client.list.res.dto';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -29,5 +31,11 @@ export class AdminController {
 		@Body() userIds: string[],
 	): Promise<{ updatedUsers: UserStatusUpdateResDto[]; missingUserIds: string[] }> {
 		return this.adminService.updateUserStatus(userIds, 'declined');
+	}
+
+	// 가입된 광고주 조회
+	@Get('clients')
+	async getAllClients(@Query() clientListReqDto: ClientListReqDto): Promise<ClientListResDto[]> {
+		return this.adminService.getClients(clientListReqDto);
 	}
 }
