@@ -48,6 +48,9 @@ export class User extends Document {
 	@Prop()
 	memo: string;
 
+	@Prop({ default: true, required: true })
+	is_active: boolean;
+
 	@Prop({ enum: ['approved', 'pending', 'declined'], required: true })
 	status: string;
 

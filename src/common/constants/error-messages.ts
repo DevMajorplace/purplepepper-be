@@ -7,6 +7,7 @@ export const ERROR_MESSAGE_USER_NOT_FOUND = '존재하지 않는 사용자입니
 export const ERROR_MESSAGE_NO_USER_IDS = '사용자가 없습니다.';
 export const ERROR_MESSAGE_STATUS_PENDING = '가입 대기 상태입니다. 관리자에게 문의하세요.';
 export const ERROR_MESSAGE_STATUS_DECLINED = '가입 거절 상태입니다. 관리자에게 문의하세요.';
+export const ERROR_MESSAGE_PASSWORD_POLICY = '비밀번호는 8자 이상, 대문자, 숫자, 특수문자를 포함해야 합니다.';
 
 // Boards
 export const ERROR_MESSAGE_BOARD_NOT_FOUND = '해당 게시글을 찾을 수 없습니다.';
@@ -17,3 +18,4 @@ export const ERROR_MESSAGE_NO_TOKEN = '토큰이 없습니다.';
 
 // Admin
 export const ERROR_MESSAGE_USERS_NOT_FOUND = (ids: string) => `다음 사용자 ID를 찾을 수 없습니다: ${ids}`;
+export const ERROR_MESSAGE_USER_ID_MISSING = '사용자 ID를 입력해주세요.';

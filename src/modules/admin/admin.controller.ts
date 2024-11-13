@@ -1,10 +1,12 @@
-import { Body, Controller, Get, Patch, Query } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Query, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
 import { UserStatusQueryDto } from '../admin/dto/user-status-query.dto';
 import { AdminService } from './admin.service';
+import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
+import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
 
 @ApiTags('Admin')
@@ -33,9 +35,25 @@ export class AdminController {
 		return this.adminService.updateUserStatus(userIds, 'declined');
 	}
 
-	// 가입된 광고주 조회
+	// 가입된 광고주 목록 조회
 	@Get('clients')
 	async getAllClients(@Query() clientListReqDto: ClientListReqDto): Promise<ClientListResDto[]> {
 		return this.adminService.getClients(clientListReqDto);
+	}
+
+	// 단일 광고주 상세 조회
+	@Get('client')
+	async getClientDetail(@Query('userId') userId: string): Promise<ClientDetailResDto> {
+		return this.adminService.getClientDetail(userId);
+	}
+
+	// 단일 광고주 상세 정보 변경
+	@Patch('client')
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+	async updateClientDetail(
+		@Query('userId') userId: string,
+		@Body() clientDetailReqDto: ClientDetailReqDto,
+	): Promise<ClientDetailResDto> {
+		return this.adminService.updateClientDetail(userId, clientDetailReqDto);
 	}
 }
