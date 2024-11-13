@@ -2,16 +2,19 @@ import {
 	BadRequestException,
 	Injectable,
 	InternalServerErrorException,
+	NotFoundException,
 	Req,
 	UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
+import { validatePassword, ValidateUserId } from 'src/common/utils/validation.util';
 import {
 	ERROR_MESSAGE_DUPLICATE_ID,
 	ERROR_MESSAGE_HASH_FAILED,
 	ERROR_MESSAGE_INVALID_ROLE,
+	ERROR_MESSAGE_PARENT_NOT_FOUND,
 	ERROR_MESSAGE_STATUS_DECLINED,
 	ERROR_MESSAGE_STATUS_PENDING,
 	ERROR_MESSAGE_USER_LOGIN_FAILED,
@@ -34,10 +37,24 @@ export class UsersService {
 	//가입
 	async signUp(user: SignUpReqDto): Promise<SignUpResDto> {
 		const userId = user.user_id;
+		// 유저아이디 유효성 검사
+		ValidateUserId(userId);
+
+		// 유저비밀번호 유효성 검사
+		validatePassword(user.password);
+
 		const existedUserId = await this.userModel.findOne({ user_id: userId }).exec();
 
 		if (existedUserId) {
 			throw new BadRequestException(ERROR_MESSAGE_DUPLICATE_ID);
+		}
+
+		// 추천인 아이디가 존재하는 회원인지 확인
+		if (Array.isArray(user.parent_ids) && user.parent_ids.length > 0) {
+			const existedParentId = await this.userModel.findOne({ user_id: user.parent_ids[0] }).exec();
+			if (!existedParentId) {
+				throw new NotFoundException(ERROR_MESSAGE_PARENT_NOT_FOUND);
+			}
 		}
 
 		// PASS 본인인증 로직 필요 -> client 단계에서 처리하고 넘어오지 않을까 예상하고 작업

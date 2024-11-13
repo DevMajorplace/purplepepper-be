@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req } from '@nestjs/common';
+import { Body, Controller, Post, Req, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LoginReqDto } from './dto/req/login.req.dto';
 import { SignUpReqDto } from './dto/req/signup.req.dto';
@@ -12,6 +12,7 @@ export class UsersController {
 
 	// 회원가입
 	@Post('signup')
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	@ApiResponse({ type: SignUpResDto })
 	async signUp(@Body() user: SignUpReqDto): Promise<SignUpResDto> {
 		return this.usersService.signUp(user);
