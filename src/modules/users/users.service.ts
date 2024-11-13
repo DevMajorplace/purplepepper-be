@@ -104,26 +104,26 @@ export class UsersService {
 				login_success: isValidPassword,
 			};
 
-			if (isValidPassword) {
-				const payload = { userId: userId, role: existedUser.role };
-				const accessToken = this.authService.createToken(payload);
+			if (!isValidPassword) {
+				// 실패 시 최신 `login_failed` 값을 재계산
+				const updatedUser = await this.userModel.findById(existedUser._id).exec();
+				const updatedLoginFailedCount = (updatedUser?.login_failed || 0) + 1;
 
-				// 로그인 성공 시 로그 추가 및 실패 횟수 초기화
+				// 실패 로그 추가 및 실패 횟수 증가
 				await this.loginLogModel.create(loginLog);
-				await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: 0 } });
+				await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: updatedLoginFailedCount } });
 
-				return { accessToken };
+				throw new UnauthorizedException(ERROR_MESSAGE_USER_LOGIN_FAILED);
 			}
 
-			// 실패 시 최신 `login_failed` 값을 재계산
-			const updatedUser = await this.userModel.findById(existedUser._id).exec();
-			const updatedLoginFailedCount = (updatedUser?.login_failed || 0) + 1;
+			const payload = { userId: userId, role: existedUser.role };
+			const accessToken = this.authService.createToken(payload);
 
-			// 실패 로그 추가 및 실패 횟수 증가
+			// 로그인 성공 시 로그 추가 및 실패 횟수 초기화
 			await this.loginLogModel.create(loginLog);
-			await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: updatedLoginFailedCount } });
+			await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: 0 } });
 
-			throw new UnauthorizedException(ERROR_MESSAGE_USER_LOGIN_FAILED);
+			return { accessToken };
 		} catch (error) {
 			throw error;
 		}
