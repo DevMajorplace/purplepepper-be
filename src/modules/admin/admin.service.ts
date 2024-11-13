@@ -2,13 +2,20 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import * as moment from 'moment-timezone';
 import { Model } from 'mongoose';
-import { ERROR_MESSAGE_NO_USER_IDS, ERROR_MESSAGE_USERS_NOT_FOUND } from '../../common/constants/error-messages';
+import { isNotEmptyUserId, validatePassword } from 'src/common/utils/validation.util';
+import {
+	ERROR_MESSAGE_NO_USER_IDS,
+	ERROR_MESSAGE_USER_NOT_FOUND,
+	ERROR_MESSAGE_USERS_NOT_FOUND,
+} from '../../common/constants/error-messages';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
 import { AuthService } from '../auth/auth.service';
 import { LoginLog } from '../users/schemas/login-log.schema';
 import { User } from '../users/schemas/user.schema';
+import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
+import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
 
 @Injectable()
@@ -144,5 +151,75 @@ export class AdminService {
 
 		// null 값을 제거하고 결과 반환
 		return clientList.filter(client => client !== null);
+	}
+
+	// 광고주 조회 로직을 별도 함수로 분리
+	private async findClientById(userId: string) {
+		// 아이디 공백 검사
+		isNotEmptyUserId(userId);
+
+		const query: any = {
+			user_id: userId,
+			status: 'approved',
+			role: 'client',
+		};
+
+		const user = await this.userModel.findOne(query).exec();
+		if (!user) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+		return user;
+	}
+
+	// 단일 광고주 상세 조회
+	async getClientDetail(userId: string): Promise<ClientDetailResDto> {
+		const user = await this.findClientById(userId);
+
+		return new ClientDetailResDto({
+			company_name: user.company_name,
+			parent_id: user.parent_ids,
+			is_active: user.is_active,
+			user_id: user.user_id,
+			manager_name: user.manager_name,
+			manager_contact: user.manager_contact,
+			account_bank: user.account_bank,
+			account_number: user.account_number,
+			account_holder: user.account_holder,
+			memo: user.memo,
+		});
+	}
+
+	// 단일 광고주 정보 변경
+	async updateClientDetail(userId: string, clientDetailReqDto: ClientDetailReqDto): Promise<ClientDetailResDto> {
+		// 아이디 공백 검사
+		isNotEmptyUserId(userId);
+
+		const user = await this.findClientById(userId);
+
+		// 비밀번호 변경 시 비밀번호 정책 검사
+		if (clientDetailReqDto.password) {
+			validatePassword(clientDetailReqDto.password);
+		}
+
+		const updateFields: any = {};
+
+		// null이나 undefined가 아니면 변경으로 인식
+		Object.entries(clientDetailReqDto).forEach(([key, value]) => {
+			if (value !== undefined && value !== user[key]) {
+				updateFields[key] = value;
+			}
+		});
+
+		if (Object.keys(updateFields).length === 0) {
+			// 변경 사항이 없으므로, 현재 사용자 정보 그대로 반환
+			return new ClientDetailResDto(user);
+		}
+
+		// 변경된 정보 업데이트 수행
+		await this.userModel.updateOne({ _id: user._id }, { $set: updateFields }).exec();
+
+		// 업데이트된 사용자 정보 반환
+		const updatedUser = await this.findClientById(userId);
+		return new ClientDetailResDto(updatedUser);
 	}
 }
