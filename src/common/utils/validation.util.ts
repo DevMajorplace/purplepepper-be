@@ -23,7 +23,7 @@ export function isNotEmptyUserId(userId: string): void {
 	}
 }
 
-export function ValidateUserId(userId: string): void {
+export function validateUserId(userId: string): void {
 	const userIdRegex = /^[a-zA-Z0-9_]{6,12}$/;
 	if (!userIdRegex.test(userId)) {
 		throw new BadRequestException(ERROR_MESSAGE_USERID_POLICY);
