@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDate, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
-export class ClientListResDto {
+export class AgencyListResDto {
 	@IsString()
 	@IsNotEmpty()
 	@ApiProperty({ description: '유저 아이디' })
@@ -14,8 +14,13 @@ export class ClientListResDto {
 
 	@IsNumber()
 	@IsNotEmpty()
-	@ApiProperty({ description: '보유 캐시' })
-	public readonly cash: number;
+	@ApiProperty({ description: '회원 수', default: 0 })
+	public readonly numberOfUsers: number;
+
+	@IsNumber()
+	@IsNotEmpty()
+	@ApiProperty({ description: '전일 대비 회원 증가수', default: 0 })
+	public readonly dailyMemberGrowth: number;
 
 	@IsNumber()
 	@IsNotEmpty()
@@ -32,30 +37,19 @@ export class ClientListResDto {
 	@ApiProperty({ description: '담당자 연락처' })
 	public readonly manager_contact: string;
 
-	@IsString()
-	@IsNotEmpty()
-	@ApiProperty({ description: '상위 회원' })
-	public readonly parent_id: string;
-
 	@IsDate()
 	@IsNotEmpty()
 	@ApiProperty({ description: '등록 일시' })
 	public readonly approved_at: Date;
 
-	@IsDate()
-	@IsNotEmpty()
-	@ApiProperty({ description: '마지막 로그인' })
-	public readonly last_login: Date;
-
-	constructor(user: any, lastLoginTimestamp: Date | null) {
+	constructor(user: any) {
 		this.user_id = user.user_id;
 		this.company_name = user.company_name;
-		this.cash = user.cash;
+		this.numberOfUsers = user.numberOfUsers ?? 0;
+		this.dailyMemberGrowth = user.dailyMemberGrowth ?? 0;
 		this.point = user.point;
 		this.manager_name = user.manager_name;
 		this.manager_contact = user.manager_contact;
-		this.parent_id = user.parent_ids?.[0] ?? null;
 		this.approved_at = user.approved_at ?? null;
-		this.last_login = lastLoginTimestamp;
 	}
 }
