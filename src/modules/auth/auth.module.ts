@@ -2,11 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthService } from './auth.service';
-import { AuthGuard } from './guards/auth.guard';
 
 @Module({
 	imports: [
-		ConfigModule, // ConfigModule 추가
 		JwtModule.registerAsync({
 			imports: [ConfigModule],
 			inject: [ConfigService],
@@ -16,7 +14,7 @@ import { AuthGuard } from './guards/auth.guard';
 			}),
 		}),
 	],
-	providers: [AuthService, AuthGuard],
+	providers: [AuthService],
 	exports: [AuthService],
 })
 export class AuthModule {}
