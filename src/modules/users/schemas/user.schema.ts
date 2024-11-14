@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document } from 'mongoose';
 
 @Schema({ timestamps: { createdAt: 'created_at', updatedAt: false } })
 export class User extends Document {
@@ -21,8 +21,8 @@ export class User extends Document {
 	@Prop({ default: 0 })
 	monthly_target_revenue: number;
 
-	@Prop({ type: [Types.ObjectId], ref: 'User', default: [] })
-	parent_ids: Types.ObjectId[];
+	@Prop({ type: [String], ref: 'User', default: [] })
+	parent_ids: string[];
 
 	@Prop({ enum: ['admin', 'agency', 'client'], required: true })
 	role: string;

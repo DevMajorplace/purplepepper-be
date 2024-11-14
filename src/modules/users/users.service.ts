@@ -34,61 +34,84 @@ export class UsersService {
 		private readonly authService: AuthService,
 	) {}
 
-	//가입
+	// 상위 회원 3단계까지 찾는 함수
+	// 상위 회원 3단계까지 찾는 함수
+	private async findHierarchy(userId: string, maxDepth: number = 3): Promise<string[]> {
+		const hierarchy: string[] = [];
+		let currentUserId = userId;
+
+		for (let i = 0; i < maxDepth; i++) {
+			// 상위 추천인 user_id를 찾기
+			const user = await this.userModel.findOne({ user_id: currentUserId }).exec();
+
+			// 현재 추천인이 존재하지 않거나 비활성화 상태이면 중단
+			if (!user || !user.parent_ids || user.parent_ids.length === 0 || !user.is_active) break;
+
+			// 다음 상위 추천인 user_id를 가져옴
+			const nextUserId = user.parent_ids[0];
+
+			// 유효한 추천인 user_id 중 is_active가 true인 경우에만 추가
+			const nextUser = await this.userModel.findOne({ user_id: nextUserId, is_active: true }).exec();
+			if (!nextUser) break; // 다음 상위 추천인이 존재하지 않거나 비활성화 상태이면 중단
+
+			hierarchy.push(nextUserId);
+			currentUserId = nextUserId;
+		}
+
+		return hierarchy;
+	}
+
+	// 가입
 	async signUp(user: SignUpReqDto): Promise<SignUpResDto> {
 		const userId = user.user_id;
-		// 유저아이디 유효성 검사
-		validateUserId(userId);
 
-		// 유저비밀번호 유효성 검사
+		// 유저아이디 및 비밀번호 유효성 검사
+		validateUserId(userId);
 		validatePassword(user.password);
 
+		// 중복 아이디 확인
 		const existedUserId = await this.userModel.findOne({ user_id: userId }).exec();
-
 		if (existedUserId) {
 			throw new BadRequestException(ERROR_MESSAGE_DUPLICATE_ID);
 		}
 
-		// 추천인 아이디가 존재하는 회원인지 확인
+		// 추천인 아이디가 존재하는 회원인지 확인 및 계층 설정
+		let parentIds: string[] = [];
 		if (Array.isArray(user.parent_ids) && user.parent_ids.length > 0) {
-			const existedParentId = await this.userModel.findOne({ user_id: user.parent_ids[0] }).exec();
-			if (!existedParentId) {
+			const referrerId = user.parent_ids[0];
+
+			// 추천인(user_id) 존재 여부 확인
+			const existedParent = await this.userModel.findOne({ user_id: referrerId }).exec();
+			if (!existedParent) {
 				throw new NotFoundException(ERROR_MESSAGE_PARENT_NOT_FOUND);
 			}
+
+			// 추천인 계층을 최대 3단계까지 찾기
+			parentIds = [referrerId, ...(await this.findHierarchy(referrerId))];
 		}
 
-		// PASS 본인인증 로직 필요 -> client 단계에서 처리하고 넘어오지 않을까 예상하고 작업
-		// 비밀번호 해시 및 에러 처리
+		// 비밀번호 해시
 		const hashedPassword = await bcrypt.hash(user.password, 10).catch(() => {
 			throw new InternalServerErrorException(ERROR_MESSAGE_HASH_FAILED);
 		});
 
-		// 역할에 따른 승인 상태 및 필드 설정
-		if (user.role !== 'admin' && user.role !== 'agency' && user.role !== 'client')
+		// 역할에 따른 승인 상태 설정
+		if (!['admin', 'agency', 'client'].includes(user.role)) {
 			throw new BadRequestException(ERROR_MESSAGE_INVALID_ROLE);
-
-		// 관리자 또는 총판 역할인 경우 승인 처리 (추후 관리자 계정이 다중계정이 될 때를 고려)
-		let status: 'approved' | 'pending' = 'pending';
-		if (user.role === 'admin' || user.role === 'agency') status = 'approved';
+		}
+		const status: 'approved' | 'pending' = ['admin', 'agency'].includes(user.role) ? 'approved' : 'pending';
 
 		// 새로운 사용자 생성
 		const newUser = new this.userModel({
 			...user,
 			password: hashedPassword,
+			parent_ids: parentIds.slice(0, 3), // 최대 3단계까지 저장
 			approved_at: status === 'approved' ? new Date() : undefined,
 			status,
 		});
 		await newUser.save();
 
-		// 사업자등록증 S3 전송 및 URL 반환 로직 추가 필요
-
-		// 역할에 따른 상태 값 반환
 		return new SignUpResDto({ status });
-	}
-
-	// 사용자 찾기
-	async findByUserId(userId: string): Promise<User | undefined> {
-		return this.userModel.findOne({ user_id: userId }).exec();
 	}
 
 	// 로그인
