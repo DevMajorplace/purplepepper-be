@@ -9,7 +9,7 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { Model } from 'mongoose';
-import { validatePassword, ValidateUserId } from 'src/common/utils/validation.util';
+import { validatePassword, validateUserId } from 'src/common/utils/validation.util';
 import {
 	ERROR_MESSAGE_DUPLICATE_ID,
 	ERROR_MESSAGE_HASH_FAILED,
@@ -38,7 +38,7 @@ export class UsersService {
 	async signUp(user: SignUpReqDto): Promise<SignUpResDto> {
 		const userId = user.user_id;
 		// 유저아이디 유효성 검사
-		ValidateUserId(userId);
+		validateUserId(userId);
 
 		// 유저비밀번호 유효성 검사
 		validatePassword(user.password);

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import * as moment from 'moment-timezone';
 import { Model } from 'mongoose';
+import { paginate, PaginationResult } from 'src/common/utils/pagination.util';
 import { isNotEmptyUserId, validatePassword } from 'src/common/utils/validation.util';
 import {
 	ERROR_MESSAGE_NO_USER_IDS,
@@ -27,9 +28,22 @@ export class AdminService {
 	) {}
 
 	// 가입 대기/거절 회원 조회
-	async findUsersByStatus(status: 'pending' | 'declined'): Promise<UserStatusResDto[]> {
-		const users = await this.userModel.find({ status }).exec();
-		return users.map(user => new UserStatusResDto(user));
+	async findUsersByStatus(
+		status: 'pending' | 'declined',
+		page: number,
+		pageSize: number,
+	): Promise<PaginationResult<UserStatusResDto>> {
+		// 검색 조건 설정
+		const query = { status };
+
+		// 페이지네이션 호출
+		const result = await paginate(this.userModel, page, pageSize, query);
+
+		// 결과 데이터 형식을 UserStatusResDto로 변환
+		return {
+			...result,
+			data: result.data.map(user => new UserStatusResDto(user)),
+		};
 	}
 
 	// 가입 상태 업데이트(단일, 다중 사용자 승인 거절)
@@ -78,7 +92,17 @@ export class AdminService {
 	}
 
 	// 가입된 광고주 조건/전체 조회
-	async getClients(clientListReqDto?: ClientListReqDto): Promise<ClientListResDto[]> {
+	async getClients(
+		page,
+		pageSize,
+		clientListReqDto?: ClientListReqDto,
+	): Promise<{
+		data: ClientListResDto[];
+		totalItems: number;
+		totalPages: number;
+		currentPage: number;
+		pageSize: number;
+	}> {
 		// 기본 검색 조건 설정
 		const query: any = {
 			status: 'approved',
@@ -103,12 +127,12 @@ export class AdminService {
 			}
 		}
 
-		// 사용자 목록 가져오기 (가입 승인일 조건을 기반으로)
-		const users = await this.userModel.find(query).exec();
+		// 페이지네이션 호출
+		const result = await paginate(this.userModel, page, pageSize, query);
 
 		// 최종 클라이언트 리스트 생성 (마지막 로그인 날짜 조건 추가 필터링)
 		const clientList = await Promise.all(
-			users.map(async user => {
+			result.data.map(async user => {
 				// 마지막 로그인 기록 조회 (로그인 성공만) + 필터링 조건 설정
 				const lastLoginQuery: any = { user_idx: user._id, login_success: true };
 
@@ -131,7 +155,10 @@ export class AdminService {
 				}
 
 				const lastLogin = await this.loginLogModel.findOne(lastLoginQuery).sort({ login_timestamp: -1 }).exec();
-				const lastLoginTimestamp = lastLogin ? lastLogin.login_timestamp : null;
+				// 로그인 기록이 조건에 맞지 않으면 null 반환
+				if (!lastLogin) {
+					return null;
+				}
 
 				return new ClientListResDto(
 					{
@@ -144,16 +171,22 @@ export class AdminService {
 						parent_id: user.parent_ids,
 						approved_at: user.approved_at,
 					},
-					lastLoginTimestamp,
+					lastLogin.login_timestamp,
 				);
 			}),
 		);
 
 		// null 값을 제거하고 결과 반환
-		return clientList.filter(client => client !== null);
+		return {
+			data: clientList.filter(client => client !== null),
+			totalItems: result.totalItems,
+			totalPages: result.totalPages,
+			currentPage: page,
+			pageSize,
+		};
 	}
 
-	// 광고주 조회 로직을 별도 함수로 분리
+	// 광고주 아이디 조회 함수
 	private async findClientById(userId: string) {
 		// 아이디 공백 검사
 		isNotEmptyUserId(userId);

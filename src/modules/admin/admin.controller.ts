@@ -15,8 +15,18 @@ export class AdminController {
 	constructor(private readonly adminService: AdminService) {}
 	// 가입 대기/거절 회원 조회
 	@Get('status')
-	async findUsersByStatus(@Query() query: UserStatusQueryDto): Promise<UserStatusResDto[]> {
-		return this.adminService.findUsersByStatus(query.status);
+	async findUsersByStatus(
+		@Query('page') page: number,
+		@Query('pageSize') pageSize: number,
+		@Query() query: UserStatusQueryDto,
+	): Promise<{
+		data: UserStatusResDto[];
+		totalItems: number;
+		totalPages: number;
+		currentPage: number;
+		pageSize: number;
+	}> {
+		return this.adminService.findUsersByStatus(query.status, page, pageSize);
 	}
 
 	// 가입 승인(단일, 다중 사용자)
@@ -37,8 +47,18 @@ export class AdminController {
 
 	// 가입된 광고주 목록 조회
 	@Get('clients')
-	async getAllClients(@Query() clientListReqDto: ClientListReqDto): Promise<ClientListResDto[]> {
-		return this.adminService.getClients(clientListReqDto);
+	async getAllClients(
+		@Query('page') page: number,
+		@Query('pageSize') pageSize: number,
+		@Query() clientListReqDto: ClientListReqDto,
+	): Promise<{
+		data: ClientListResDto[];
+		totalItems: number;
+		totalPages: number;
+		currentPage: number;
+		pageSize: number;
+	}> {
+		return this.adminService.getClients(page, pageSize, clientListReqDto);
 	}
 
 	// 단일 광고주 상세 조회

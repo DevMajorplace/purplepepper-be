@@ -62,4 +62,9 @@ export class SignUpReqDto {
 	@IsOptional()
 	@ApiProperty({ description: '사업자등록증 S3 링크' })
 	public readonly business_registration: string;
+
+	@IsString()
+	@IsOptional()
+	@ApiProperty({ description: '관리자 메모' })
+	public readonly memo: string;
 }
