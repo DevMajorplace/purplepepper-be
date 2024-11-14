@@ -1,8 +1,11 @@
-import { Body, Controller, Get, Patch, Query, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
 import { UserStatusQueryDto } from '../admin/dto/user-status-query.dto';
+import { AuthGuard } from '../auth/guards/auth.guard';
+import { UserRoles } from '../auth/types/role.decorator';
+import { Role } from '../auth/types/role.enum';
 import { AdminService } from './admin.service';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
@@ -10,11 +13,14 @@ import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
 
 @ApiTags('Admin')
+@UseGuards(AuthGuard)
 @Controller('admin')
 export class AdminController {
 	constructor(private readonly adminService: AdminService) {}
+
 	// 가입 대기/거절 회원 조회
 	@Get('status')
+	@UserRoles([Role.Admin])
 	async findUsersByStatus(
 		@Query('page') page: number,
 		@Query('pageSize') pageSize: number,
@@ -31,6 +37,7 @@ export class AdminController {
 
 	// 가입 승인(단일, 다중 사용자)
 	@Patch('approve')
+	@UserRoles([Role.Admin])
 	async approveUsers(
 		@Body() userIds: string[],
 	): Promise<{ updatedUsers: UserStatusUpdateResDto[]; missingUserIds: string[] }> {
@@ -39,6 +46,7 @@ export class AdminController {
 
 	// 가입 거절(단일, 다중 사용자)
 	@Patch('decline')
+	@UserRoles([Role.Admin])
 	async declineUsers(
 		@Body() userIds: string[],
 	): Promise<{ updatedUsers: UserStatusUpdateResDto[]; missingUserIds: string[] }> {
@@ -47,6 +55,7 @@ export class AdminController {
 
 	// 가입된 광고주 목록 조회
 	@Get('clients')
+	@UserRoles([Role.Admin])
 	async getAllClients(
 		@Query('page') page: number,
 		@Query('pageSize') pageSize: number,
@@ -63,12 +72,14 @@ export class AdminController {
 
 	// 단일 광고주 상세 조회
 	@Get('client')
+	@UserRoles([Role.Admin])
 	async getClientDetail(@Query('userId') userId: string): Promise<ClientDetailResDto> {
 		return this.adminService.getClientDetail(userId);
 	}
 
 	// 단일 광고주 상세 정보 변경
 	@Patch('client')
+	@UserRoles([Role.Admin])
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async updateClientDetail(
 		@Query('userId') userId: string,
