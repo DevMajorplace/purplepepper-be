@@ -4,8 +4,10 @@ import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
 import { UserStatusQueryDto } from '../admin/dto/user-status-query.dto';
 import { AdminService } from './admin.service';
+import { AgencyListReqDto } from './dto/req/agency.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
+import { AgencyListResDto } from './dto/res/agency.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
 
@@ -58,7 +60,7 @@ export class AdminController {
 		currentPage: number;
 		pageSize: number;
 	}> {
-		return this.adminService.getClients(page, pageSize, clientListReqDto);
+		return this.adminService.getAllClients(page, pageSize, clientListReqDto);
 	}
 
 	// 단일 광고주 상세 조회
@@ -75,5 +77,21 @@ export class AdminController {
 		@Body() clientDetailReqDto: ClientDetailReqDto,
 	): Promise<ClientDetailResDto> {
 		return this.adminService.updateClientDetail(userId, clientDetailReqDto);
+	}
+
+	// 가입된 총판 목록 조회
+	@Get('agencies')
+	async getAllAgencies(
+		@Query('page') page: number,
+		@Query('pageSize') pageSize: number,
+		@Query() agencyListReqDto: AgencyListReqDto,
+	): Promise<{
+		data: AgencyListResDto[];
+		totalItems: number;
+		totalPages: number;
+		currentPage: number;
+		pageSize: number;
+	}> {
+		return this.adminService.getAllAgencies(page, pageSize, agencyListReqDto);
 	}
 }
