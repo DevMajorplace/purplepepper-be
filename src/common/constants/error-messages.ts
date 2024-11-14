@@ -16,7 +16,9 @@ export const ERROR_MESSAGE_BOARD_NOT_FOUND = '해당 게시글을 찾을 수 없
 
 // Auth
 export const ERROR_MESSAGE_INVALID_TOKEN = '유효한 토큰이 아닙니다.';
+export const ERROR_MESSAGE_EXPIRED_TOKEN = '기간이 만료된 토큰입니다.';
 export const ERROR_MESSAGE_NO_TOKEN = '토큰이 없습니다.';
+export const ERROR_MESSAGE_PERMISSION_DENIED = '접근 권한이 없는 계정입니다.';
 
 // Admin
 export const ERROR_MESSAGE_USERS_NOT_FOUND = (ids: string) => `다음 사용자 ID를 찾을 수 없습니다: ${ids}`;
