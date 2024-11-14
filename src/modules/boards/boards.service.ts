@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Req } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { paginate } from 'src/common/utils/pagination.util';
 import { ERROR_MESSAGE_BOARD_NOT_FOUND } from '../../common/constants/error-messages';
 import { BoardItemDto } from './dto/board.item.dto';
 import { BoardReqDto } from './dto/req/board.req.dto';
@@ -13,9 +14,21 @@ export class BoardsService {
 	constructor(@InjectModel(Board.name) private readonly boardModel: Model<Board>) {}
 
 	//전체 목록 조회
-	async getAllBoards(): Promise<BoardListResDto> {
-		const boards = await this.boardModel.find().exec();
-		const items = boards.map(
+	async getAllBoards(
+		page: number,
+		pageSize: number = 15,
+		category: string = '',
+		title: string = '',
+		@Req() req: any,
+	): Promise<BoardListResDto> {
+		const user = req.user;
+		const query = {
+			visible: { $in: user.role },
+			category: { $regex: category, $options: 'i' },
+			title: { $regex: title, $options: 'i' },
+		};
+		const result = await paginate(this.boardModel, page, pageSize, query);
+		const items = result.data.map(
 			board =>
 				new BoardItemDto({
 					id: board.id,
