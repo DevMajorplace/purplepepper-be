@@ -7,9 +7,11 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { UserRoles } from '../auth/types/role.decorator';
 import { Role } from '../auth/types/role.enum';
 import { AdminService } from './admin.service';
+import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
 import { AgencyListReqDto } from './dto/req/agency.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
+import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
@@ -104,5 +106,21 @@ export class AdminController {
 		pageSize: number;
 	}> {
 		return this.adminService.getAllAgencies(page, pageSize, agencyListReqDto);
+	}
+
+	// 단일 총판 상세 조회
+	@Get('agency')
+	async getAgencyDetail(@Query('userId') userId: string): Promise<AgencyDetailResDto> {
+		return this.adminService.getAgencyDetail(userId);
+	}
+
+	// 단일 총판 상세 정보 변경
+	@Patch('agency')
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+	async updateAgencyDetail(
+		@Query('userId') userId: string,
+		@Body() agencyDetailReqDto: AgencyDetailReqDto,
+	): Promise<AgencyDetailResDto> {
+		return this.adminService.updateAgencyDetail(userId, agencyDetailReqDto);
 	}
 }

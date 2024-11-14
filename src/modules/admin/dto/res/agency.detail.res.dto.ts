@@ -1,20 +1,15 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsNotEmpty, IsString } from 'class-validator';
 
-export class ClientDetailResDto {
+export class AgencyDetailResDto {
 	@IsString()
 	@IsNotEmpty()
 	@ApiProperty({ description: '업체명' })
 	public readonly company_name: string;
 
-	@IsString()
-	@IsNotEmpty()
-	@ApiProperty({ description: '상위 회원' })
-	public readonly parent_id: string;
-
 	@IsBoolean()
 	@IsNotEmpty()
-	@ApiProperty({ description: '광고주 사용여부', default: true })
+	@ApiProperty({ description: '총판 사용여부', default: true })
 	public readonly is_active: boolean;
 
 	@IsString()
@@ -54,7 +49,6 @@ export class ClientDetailResDto {
 
 	constructor(user: any) {
 		this.company_name = user.company_name;
-		this.parent_id = user.parent_ids?.[0] ?? null;
 		this.is_active = user.is_active;
 		this.user_id = user.user_id;
 		this.manager_name = user.manager_name;
