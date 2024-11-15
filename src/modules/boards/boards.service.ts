@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Req } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { paginate } from 'src/common/utils/pagination.util';
 import { ERROR_MESSAGE_BOARD_NOT_FOUND } from '../../common/constants/error-messages';
 import { BoardItemDto } from './dto/board.item.dto';
 import { BoardReqDto } from './dto/req/board.req.dto';
@@ -13,9 +14,17 @@ export class BoardsService {
 	constructor(@InjectModel(Board.name) private readonly boardModel: Model<Board>) {}
 
 	//전체 목록 조회
-	async getAllBoards(): Promise<BoardListResDto> {
-		const boards = await this.boardModel.find().exec();
-		const items = boards.map(
+	async getAllBoards(
+		page: number,
+		pageSize: number = 15,
+		category: string = '',
+		title: string = '',
+		@Req() req: any,
+	): Promise<BoardListResDto> {
+		const user = req.user;
+		const query = this.buildQuery(user.role, category, title);
+		const result = await paginate(this.boardModel, page, pageSize, query);
+		const items = result.data.map(
 			board =>
 				new BoardItemDto({
 					id: board.id,
@@ -89,5 +98,32 @@ export class BoardsService {
 			file_urls: deletedBoard.file_urls,
 			created_at: deletedBoard.created_at,
 		});
+	}
+
+	private buildQuery(role: any, category: string, title: string) {
+		const query = {} as any;
+
+		query.visible = { $in: role };
+		// 아래엔 겹치는 공백을 제거하기 위한 코드인데.. 나중에 가능하면 깔끔하게 개선해야겠다.
+		if (category !== '') {
+			query.category = {
+				$regex: category
+					.split(' ')
+					.filter(v => v !== '')
+					.join(' '),
+				$options: 'i',
+			};
+		}
+		if (title !== '') {
+			query.title = {
+				$regex: title
+					.split(' ')
+					.filter(v => v !== '')
+					.join(' '),
+				$options: 'i',
+			};
+		}
+
+		return query;
 	}
 }

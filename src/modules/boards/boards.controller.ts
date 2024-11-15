@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { UserRoles } from '../auth/types/role.decorator';
@@ -17,8 +17,14 @@ export class BoardsController {
 
 	@Get()
 	@ApiResponse({ type: BoardListResDto })
-	async getBoardsList(): Promise<BoardListResDto> {
-		return this.boardService.getAllBoards();
+	async getBoardsList(
+		@Query('page') page: number,
+		@Query('pageSize') pageSize: number,
+		@Query('category') category: string,
+		@Query('title') title: string,
+		@Req() req: Request,
+	): Promise<BoardListResDto> {
+		return this.boardService.getAllBoards(page, pageSize, category, title, req);
 	}
 
 	@Get(':id')

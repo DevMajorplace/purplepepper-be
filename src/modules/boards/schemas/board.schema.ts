@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
+import { Role } from 'src/modules/auth/types/role.enum';
 
 @Schema({ timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } })
 export class Board extends Document {
@@ -13,7 +14,7 @@ export class Board extends Document {
 	content: string;
 
 	@Prop({ type: [String], default: ['admin'] })
-	visible: string[]; // ['admin', 'agency', 'client']
+	visible: Role[]; // ['admin', 'agency', 'client']
 
 	@Prop({ type: [String], default: [] })
 	file_urls: string[];

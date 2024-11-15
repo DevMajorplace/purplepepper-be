@@ -1,5 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsArray, IsDate, IsNotEmpty, IsString } from 'class-validator';
+import { Role } from 'src/modules/auth/types/role.enum';
 
 export class BoardDetailResDto {
 	@IsString()
@@ -25,7 +26,7 @@ export class BoardDetailResDto {
 	@IsArray()
 	@IsNotEmpty()
 	@ApiProperty({ description: '공개 범위 - admin, agency, client' })
-	public readonly visible: string[];
+	public readonly visible: Role[];
 
 	@IsString()
 	@ApiProperty({ description: '첨부파일 url' })
