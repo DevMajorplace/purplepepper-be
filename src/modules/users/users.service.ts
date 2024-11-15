@@ -35,7 +35,6 @@ export class UsersService {
 	) {}
 
 	// 상위 회원 3단계까지 찾는 함수
-	// 상위 회원 3단계까지 찾는 함수
 	private async findHierarchy(userId: string, maxDepth: number = 3): Promise<string[]> {
 		const hierarchy: string[] = [];
 		let currentUserId = userId;
