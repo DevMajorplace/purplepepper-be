@@ -22,11 +22,7 @@ export class BoardsService {
 		@Req() req: any,
 	): Promise<BoardListResDto> {
 		const user = req.user;
-		const query = {
-			visible: { $in: user.role },
-			category: { $regex: category, $options: 'i' },
-			title: { $regex: title, $options: 'i' },
-		};
+		const query = this.buildQuery(user.role, category, title);
 		const result = await paginate(this.boardModel, page, pageSize, query);
 		const items = result.data.map(
 			board =>
@@ -102,5 +98,32 @@ export class BoardsService {
 			file_urls: deletedBoard.file_urls,
 			created_at: deletedBoard.created_at,
 		});
+	}
+
+	private buildQuery(role: any, category: string, title: string) {
+		const query = {} as any;
+
+		query.visible = { $in: role };
+		// 아래엔 겹치는 공백을 제거하기 위한 코드인데.. 나중에 가능하면 깔끔하게 개선해야겠다.
+		if (category !== '') {
+			query.category = {
+				$regex: category
+					.split(' ')
+					.filter(v => v !== '')
+					.join(' '),
+				$options: 'i',
+			};
+		}
+		if (title !== '') {
+			query.title = {
+				$regex: title
+					.split(' ')
+					.filter(v => v !== '')
+					.join(' '),
+				$options: 'i',
+			};
+		}
+
+		return query;
 	}
 }
