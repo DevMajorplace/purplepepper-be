@@ -21,6 +21,6 @@ export class DashboardController {
 	// 하위 광고주 수 조회
 	@Get('clients-count')
 	async getClientsCount(@Req() req: any): Promise<ClientNumberResDto> {
-		return this.dashboardService.getClientsCount(req);
+		return this.dashboardService.getClientsStat(req);
 	}
 }
