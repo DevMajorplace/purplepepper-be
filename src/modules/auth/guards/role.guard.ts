@@ -20,7 +20,7 @@ export class RoleGuard implements CanActivate {
 		}
 
 		const { role } = request.user;
-		if (!role && !roles.includes(role)) {
+		if (!role || !roles.includes(role)) {
 			throw new UnauthorizedException(ERROR_MESSAGE_PERMISSION_DENIED);
 		}
 
