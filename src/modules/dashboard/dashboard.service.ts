@@ -1,5 +1,6 @@
 import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import * as moment from 'moment-timezone';
 import { Model } from 'mongoose';
 import { ERROR_MESSAGE_INVALID_ROLE, ERROR_MESSAGE_PERMISSION_DENIED } from 'src/common/constants/error-messages';
 import { Board } from '../boards/schemas/board.schema';
@@ -30,6 +31,35 @@ export class DashboardService {
 		}
 	}
 
+	// 특정 월의 데이터 카운트
+	private async countForMonth(model: Model<any>, filter: any, date: Date): Promise<number> {
+		// KST 기준으로 월의 시작과 끝 계산
+		const startDate = moment.tz(date, 'Asia/Seoul').startOf('month').toDate(); // 이번 달 첫째 날 00:00:00 KST
+		const endDate = moment.tz(date, 'Asia/Seoul').endOf('month').toDate(); // 이번 달 마지막 날 23:59:59.999 KST
+
+		return model
+			.countDocuments({
+				...filter,
+				is_active: true, // 사용하는 사용자만
+				status: 'approved', // 승인된 사용자만
+				approved_at: { $gte: startDate, $lt: endDate }, // 이번 달 범위
+			})
+			.exec();
+	}
+
+	// 증가율 계산
+	private calculateGrowthRate(current: number, previous: number): number {
+		if (previous === 0) return null;
+		return ((current - previous) / previous) * 100;
+	}
+
+	// 지난 달 날짜 계산
+	private getPreviousMonthDate(date: Date): Date {
+		// KST 기준으로 현재 날짜에서 지난 달로 이동
+		const previousMonth = moment.tz(date, 'Asia/Seoul').subtract(1, 'month');
+		return previousMonth.startOf('month').toDate();
+	}
+
 	// 최신 공지사항 제목 조회
 	async getLatestNoticeTitle(roles: string[]): Promise<NoticeResDto> {
 		const latestNotice = await this.boardModel
@@ -43,8 +73,8 @@ export class DashboardService {
 		return new NoticeResDto({ title: latestNotice ? latestNotice.title : '' });
 	}
 
-	// 하위 광고주 수 조회
-	async getClientsCount(req: any): Promise<ClientNumberResDto> {
+	// 하위 광고주 수 통계 조회
+	async getClientsStat(req: any): Promise<ClientNumberResDto> {
 		const user = req.user;
 
 		if (!user || !user.userId || !user.role) {
@@ -54,8 +84,16 @@ export class DashboardService {
 		// 역할에 따른 필터 생성
 		const filter = this.getFilterByRole(user.role, user.userId);
 
-		// 필터에 맞는 client 수 조회
-		const clientsCount = await this.userModel.countDocuments(filter).exec();
-		return new ClientNumberResDto({ clientsCount });
+		// 현재 날짜 기준으로 이번 달과 지난 달의 광고주 수 조회
+		const currentMonthCount = await this.countForMonth(this.userModel, filter, new Date());
+		const previousMonthCount = await this.countForMonth(this.userModel, filter, this.getPreviousMonthDate(new Date()));
+
+		// 증가율 계산
+		const growthRate = this.calculateGrowthRate(currentMonthCount, previousMonthCount);
+
+		return new ClientNumberResDto({
+			clientsCount: currentMonthCount,
+			growthRate,
+		});
 	}
 }
