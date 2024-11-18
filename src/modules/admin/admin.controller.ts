@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Patch, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
-import { ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
 import { UserStatusQueryDto } from '../admin/dto/user-status-query.dto';
@@ -18,6 +18,7 @@ import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
 
 @ApiTags('Admin')
+@ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, RoleGuard)
 @UserRoles(Role.Admin)
 @Controller('admin')

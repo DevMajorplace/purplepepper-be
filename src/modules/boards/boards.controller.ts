@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { UserRoles } from '../auth/types/role.decorator';
@@ -11,6 +11,7 @@ import { BoardListResDto } from './dto/res/board.list.res.dto';
 import { Board } from './schemas/board.schema';
 
 @ApiTags('Boards')
+@ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, RoleGuard)
 @Controller('boards')
 export class BoardsController {
