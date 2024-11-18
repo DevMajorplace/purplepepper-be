@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MongooseDatabaseModule } from './db/mongoose.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { AgencyModule } from './modules/agency/agency.module';
 import { BoardsModule } from './modules/boards/boards.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { UsersModule } from './modules/users/users.module';
@@ -16,6 +17,7 @@ import { UsersModule } from './modules/users/users.module';
 		BoardsModule,
 		AdminModule,
 		DashboardModule,
+		AgencyModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],

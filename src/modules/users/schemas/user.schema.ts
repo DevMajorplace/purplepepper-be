@@ -65,6 +65,8 @@ export class User extends Document {
 
 	@Prop()
 	deleted_at: Date;
+
+	readonly created_at: Date;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
