@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectModel } from '@nestjs/mongoose';
 import * as moment from 'moment-timezone';
 import { Model } from 'mongoose';
+import { setApprovedDateQuery, setBaseQuery } from 'src/common/utils/filter.util';
 import { paginate, PaginationResult } from 'src/common/utils/pagination.util';
 import { isNotEmptyUserId, validatePassword } from 'src/common/utils/validation.util';
 import {
@@ -12,7 +13,6 @@ import {
 } from '../../common/constants/error-messages';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
-import { AuthService } from '../auth/auth.service';
 import { LoginLog } from '../users/schemas/login-log.schema';
 import { User } from '../users/schemas/user.schema';
 import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
@@ -29,36 +29,7 @@ export class AdminService {
 	constructor(
 		@InjectModel(User.name) private readonly userModel: Model<User>,
 		@InjectModel(LoginLog.name) private readonly loginLogModel: Model<LoginLog>,
-		private readonly authService: AuthService,
 	) {}
-
-	// 기본 조건 + 업체명 검색 함수
-	private setBaseQuery(role: string, dto: any) {
-		const query: any = {
-			status: 'approved',
-			role: role,
-		};
-
-		// 업체명 부분 검색 필터링 조건 설정
-		if (dto?.company_name) {
-			query.company_name = { $regex: dto.company_name, $options: 'i' }; // 대소문자 구분 없이 부분 일치 검색
-		}
-
-		return query;
-	}
-
-	// 가입 승인일 필터링 함수
-	private setApprovedDateQuery(dto: any, query: any) {
-		if (dto?.approve_start_date || dto?.approve_end_date) {
-			query.approved_at = {};
-			if (dto.approve_start_date) {
-				query.approved_at.$gte = moment.tz(dto.approve_start_date, 'Asia/Seoul').startOf('day').toDate();
-			}
-			if (dto.approve_end_date) {
-				query.approved_at.$lte = moment.tz(dto.approve_end_date, 'Asia/Seoul').endOf('day').toDate();
-			}
-		}
-	}
 
 	// 공통 아이디 조회 함수
 	private async findUserById(userId: string, role: 'agency' | 'client') {
@@ -228,10 +199,10 @@ export class AdminService {
 		pageSize: number;
 	}> {
 		// 기본 검색 조건 + 업체명 검색
-		const query = this.setBaseQuery('client', clientListReqDto);
+		const query = setBaseQuery('client', clientListReqDto);
 
 		// 가입승인일 필터링
-		this.setApprovedDateQuery(clientListReqDto, query);
+		setApprovedDateQuery(clientListReqDto, query);
 
 		// 페이지네이션 호출
 		const result = await paginate(this.userModel, page, pageSize, query);
@@ -261,10 +232,12 @@ export class AdminService {
 				}
 
 				const lastLogin = await this.loginLogModel.findOne(lastLoginQuery).sort({ login_timestamp: -1 }).exec();
-				// 로그인 기록이 조건에 맞지 않으면 null 반환
-				if (!lastLogin) {
-					return null;
-				}
+
+				// 마지막 로그인 기록이 없으면 계정 생성일로 설정
+				const lastLoginTimestamp = lastLogin ? lastLogin.login_timestamp : user.created_at;
+
+				// 상위 회원 추출
+				const parentId = user.parent_ids?.[0] ?? null;
 
 				return new ClientListResDto(
 					{
@@ -274,10 +247,10 @@ export class AdminService {
 						point: user.point,
 						manager_name: user.manager_name,
 						manager_contact: user.manager_contact,
-						parent_id: user.parent_ids,
+						parent_id: parentId,
 						approved_at: user.approved_at,
 					},
-					lastLogin.login_timestamp,
+					lastLoginTimestamp,
 				);
 			}),
 		);
@@ -315,10 +288,10 @@ export class AdminService {
 		pageSize: number;
 	}> {
 		// 기본 검색 조건 + 업체명 검색
-		const query = this.setBaseQuery('agency', agencyListReqDto);
+		const query = setBaseQuery('agency', agencyListReqDto);
 
 		// 가입승인일 필터링
-		this.setApprovedDateQuery(agencyListReqDto, query);
+		setApprovedDateQuery(agencyListReqDto, query);
 
 		// 페이지네이션 호출
 		const result = await paginate(this.userModel, page, pageSize, query);
