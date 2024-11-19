@@ -7,8 +7,8 @@ import { paginate } from 'src/common/utils/pagination.util';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
 
-import { LoginLog } from '../users/schemas/login-log.schema';
-import { User } from '../users/schemas/user.schema';
+import { LoginLog } from '../user/schemas/login-log.schema';
+import { User } from '../user/schemas/user.schema';
 
 @Injectable()
 export class AgencyService {

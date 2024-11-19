@@ -4,7 +4,7 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { UserRoles } from '../auth/types/role.decorator';
 import { Role } from '../auth/types/role.enum';
-import { BoardsService } from './boards.service';
+import { BoardService } from './board.service';
 import { BoardReqDto } from './dto/req/board.req.dto';
 import { BoardDetailResDto } from './dto/res/board.detail.res.dto';
 import { BoardListResDto } from './dto/res/board.list.res.dto';
@@ -14,8 +14,8 @@ import { Board } from './schemas/board.schema';
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, RoleGuard)
 @Controller('boards')
-export class BoardsController {
-	constructor(private readonly boardService: BoardsService) {}
+export class BoardController {
+	constructor(private readonly boardService: BoardService) {}
 
 	@Get()
 	@UserRoles(Role.Admin, Role.Agency, Role.Client)
