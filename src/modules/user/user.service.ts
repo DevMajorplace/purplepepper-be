@@ -10,7 +10,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import { Request } from 'express';
 import { Model } from 'mongoose';
-import { validatePassword, validateUserId } from 'src/common/utils/validation.util';
+import { validHierarchy, validatePassword, validateUserId } from 'src/common/utils/validation.util';
 import {
 	ERROR_MESSAGE_DUPLICATE_ID,
 	ERROR_MESSAGE_HASH_FAILED,
@@ -40,32 +40,6 @@ export class UserService {
 		private readonly authService: AuthService,
 	) {}
 
-	// 상위 회원 3단계까지 찾는 함수
-	private async findHierarchy(userId: string, maxDepth: number = 3): Promise<string[]> {
-		const hierarchy: string[] = [];
-		let currentUserId = userId;
-
-		for (let i = 0; i < maxDepth; i++) {
-			// 상위 추천인 user_id를 찾기
-			const user = await this.userModel.findOne({ user_id: currentUserId }).exec();
-
-			// 현재 추천인이 존재하지 않거나 비활성화 상태이면 중단
-			if (!user || !user.parent_ids || user.parent_ids.length === 0 || !user.is_active) break;
-
-			// 다음 상위 추천인 user_id를 가져옴
-			const nextUserId = user.parent_ids[0];
-
-			// 유효한 추천인 user_id 중 is_active가 true인 경우에만 추가
-			const nextUser = await this.userModel.findOne({ user_id: nextUserId, is_active: true }).exec();
-			if (!nextUser) break; // 다음 상위 추천인이 존재하지 않거나 비활성화 상태이면 중단
-
-			hierarchy.push(nextUserId);
-			currentUserId = nextUserId;
-		}
-
-		return hierarchy;
-	}
-
 	// 가입
 	async signUp(user: SignUpReqDto): Promise<SignUpResDto> {
 		const userId = user.user_id;
@@ -92,7 +66,7 @@ export class UserService {
 			}
 
 			// 추천인 계층을 최대 3단계까지 찾기
-			parentIds = [referrerId, ...(await this.findHierarchy(referrerId))];
+			parentIds = [referrerId, ...(await validHierarchy(referrerId))];
 		}
 
 		// 비밀번호 해시
