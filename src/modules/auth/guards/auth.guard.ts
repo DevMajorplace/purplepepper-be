@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
-import { Request } from 'express';
 import { ERROR_MESSAGE_NO_TOKEN } from '../../../common/constants/error-messages';
 import { AuthService } from '../auth.service';
+import { extractTokenFromHeader } from '../utils/auth.util';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -9,7 +9,7 @@ export class AuthGuard implements CanActivate {
 
 	canActivate(context: ExecutionContext): boolean {
 		const request = context.switchToHttp().getRequest();
-		const token = this.extractTokenFromHeader(request);
+		const token = extractTokenFromHeader(request);
 
 		if (!token) {
 			throw new UnauthorizedException(ERROR_MESSAGE_NO_TOKEN);
@@ -20,10 +20,5 @@ export class AuthGuard implements CanActivate {
 		request.user = payload;
 
 		return true;
-	}
-
-	private extractTokenFromHeader(request: Request): string | undefined {
-		const [type, token] = request.headers.authorization?.split(' ') ?? [];
-		return type === 'Bearer' ? token : undefined; // JWT 구분
 	}
 }

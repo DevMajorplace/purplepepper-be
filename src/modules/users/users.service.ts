@@ -176,11 +176,8 @@ export class UsersService {
 		}
 	}
 
-	async logout(header: string): Promise<boolean> {
+	async logout(token: string): Promise<boolean> {
 		// 현재 접속한 유저의 Refresh Token, 토큰 만료 시간만 지우고 결과를 돌려주면 될 듯
-		const token = this.extractTokenFromHeader(header);
-		if (!token) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
-
 		const { userId } = this.authService.verifyToken(token);
 		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
 
@@ -191,12 +188,9 @@ export class UsersService {
 		return true;
 	}
 
-	async tokenRefresh(header: string): Promise<{ accessToken: string }> {
+	async tokenRefresh(refreshToken: string): Promise<{ accessToken: string }> {
 		// 넘어온 토큰 분리하고, 해당 토큰이랑 서버에 저장되어있는거 체크
 		// 일치하면 해당 데이터 기반으로 새로 access token 발급해서 전송
-		const refreshToken = this.extractTokenFromHeader(header);
-		if (!refreshToken) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
-
 		const { userId } = this.authService.verifyToken(refreshToken);
 		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
 
@@ -209,10 +203,5 @@ export class UsersService {
 		}
 
 		return { accessToken: this.authService.createAccessToken({ userId: userId, role: role }) };
-	}
-
-	private extractTokenFromHeader(authorization: string): string | undefined {
-		const [type, token] = authorization.split(' ') ?? [];
-		return type === 'Bearer' ? token : undefined; // JWT 구분
 	}
 }
