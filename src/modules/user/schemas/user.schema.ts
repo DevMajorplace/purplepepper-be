@@ -58,12 +58,6 @@ export class User extends Document {
 	login_failed: number;
 
 	@Prop()
-	token?: string;
-
-	@Prop()
-	token_expired_timestamp?: Date;
-
-	@Prop()
 	approved_at: Date;
 
 	@Prop()

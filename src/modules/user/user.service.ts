@@ -8,14 +8,15 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
+import { Request } from 'express';
 import { Model } from 'mongoose';
 import { validatePassword, validateUserId } from 'src/common/utils/validation.util';
 import {
 	ERROR_MESSAGE_DUPLICATE_ID,
-	ERROR_MESSAGE_EXPIRED_TOKEN,
 	ERROR_MESSAGE_HASH_FAILED,
 	ERROR_MESSAGE_INVALID_ROLE,
 	ERROR_MESSAGE_INVALID_TOKEN,
+	ERROR_MESSAGE_NO_TOKEN,
 	ERROR_MESSAGE_PARENT_NOT_FOUND,
 	ERROR_MESSAGE_STATUS_DECLINED,
 	ERROR_MESSAGE_STATUS_PENDING,
@@ -167,11 +168,7 @@ export class UserService {
 			await this.loginLogModel.create(loginLog);
 			await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: 0 } });
 
-			const { refreshToken, expiredTimestamp } = this.authService.createRefreshToken({ userId: userId });
-			await this.userModel.updateOne(
-				{ _id: existedUser._id },
-				{ $set: { token: refreshToken, token_expired_timestamp: expiredTimestamp } },
-			);
+			const refreshToken = this.authService.createRefreshToken({ userId: userId });
 
 			return { accessToken, refreshToken };
 		} catch (error) {
@@ -179,33 +176,19 @@ export class UserService {
 		}
 	}
 
-	async logout(token: string): Promise<boolean> {
-		// 현재 접속한 유저의 Refresh Token, 토큰 만료 시간만 지우고 결과를 돌려주면 될 듯
-		const { userId } = this.authService.verifyToken(token);
+	async tokenRefresh(@Req() req: Request): Promise<{ accessToken: string }> {
+		const token = req.cookies?.refresh_token;
+		if (!token) throw new UnauthorizedException(ERROR_MESSAGE_NO_TOKEN);
+
+		const { userId } = this.authService.verifyRefreshToken(token);
 		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
 
 		const user = await this.userModel.findOne({ user_id: userId }).exec();
-		if (!user) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
-		await this.userModel.updateOne({ _id: user._id }, { $unset: { token: '', token_expired_timestamp: 0 } });
-
-		return true;
-	}
-
-	async tokenRefresh(refreshToken: string): Promise<{ accessToken: string }> {
-		// 넘어온 토큰 분리하고, 해당 토큰이랑 서버에 저장되어있는거 체크
-		// 일치하면 해당 데이터 기반으로 새로 access token 발급해서 전송
-		const { userId } = this.authService.verifyToken(refreshToken);
-		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
-
-		const { role, token, token_expired_timestamp } = await this.userModel.findOne({ user_id: userId }).exec();
-		if (!token || token !== refreshToken) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
-
-		const currentTime = new Date().getTime() / 1000;
-		if (currentTime >= token_expired_timestamp.getTime()) {
-			throw new UnauthorizedException(ERROR_MESSAGE_EXPIRED_TOKEN);
+		if (!user) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
 		}
 
-		return { accessToken: this.authService.createAccessToken({ userId: userId, role: role }) };
+		return { accessToken: this.authService.createAccessToken({ userId: user.user_id, role: user.role }) };
 	}
 
 	// 내 정보 확인
