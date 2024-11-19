@@ -12,8 +12,10 @@ import { Model } from 'mongoose';
 import { validatePassword, validateUserId } from 'src/common/utils/validation.util';
 import {
 	ERROR_MESSAGE_DUPLICATE_ID,
+	ERROR_MESSAGE_EXPIRED_TOKEN,
 	ERROR_MESSAGE_HASH_FAILED,
 	ERROR_MESSAGE_INVALID_ROLE,
+	ERROR_MESSAGE_INVALID_TOKEN,
 	ERROR_MESSAGE_PARENT_NOT_FOUND,
 	ERROR_MESSAGE_STATUS_DECLINED,
 	ERROR_MESSAGE_STATUS_PENDING,
@@ -114,7 +116,7 @@ export class UsersService {
 	}
 
 	// 로그인
-	async login(user: LoginReqDto, @Req() req: any): Promise<{ accessToken: string }> {
+	async login(user: LoginReqDto, @Req() req: any): Promise<{ accessToken: string; refreshToken: string }> {
 		const userId = user.user_id;
 		const password = user.password;
 
@@ -156,15 +158,61 @@ export class UsersService {
 			}
 
 			const payload = { userId: userId, role: existedUser.role };
-			const accessToken = this.authService.createToken(payload);
+			const accessToken = this.authService.createAccessToken(payload);
 
 			// 로그인 성공 시 로그 추가 및 실패 횟수 초기화
 			await this.loginLogModel.create(loginLog);
 			await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: 0 } });
 
-			return { accessToken };
+			const { refreshToken, expiredTimestamp } = this.authService.createRefreshToken({ userId: userId });
+			await this.userModel.updateOne(
+				{ _id: existedUser._id },
+				{ $set: { token: refreshToken, token_expired_timestamp: expiredTimestamp } },
+			);
+
+			return { accessToken, refreshToken };
 		} catch (error) {
 			throw error;
 		}
+	}
+
+	async logout(header: string): Promise<boolean> {
+		// 현재 접속한 유저의 Refresh Token, 토큰 만료 시간만 지우고 결과를 돌려주면 될 듯
+		const token = this.extractTokenFromHeader(header);
+		if (!token) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
+
+		const { userId } = this.authService.verifyToken(token);
+		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
+
+		const user = await this.userModel.findOne({ user_id: userId }).exec();
+		if (!user) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
+		await this.userModel.updateOne({ _id: user._id }, { $unset: { token: '', token_expired_timestamp: 0 } });
+
+		return true;
+	}
+
+	async tokenRefresh(header: string): Promise<{ accessToken: string }> {
+		// 넘어온 토큰 분리하고, 해당 토큰이랑 서버에 저장되어있는거 체크
+		// 일치하면 해당 데이터 기반으로 새로 access token 발급해서 전송
+		const refreshToken = this.extractTokenFromHeader(header);
+		if (!refreshToken) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
+
+		const { userId } = this.authService.verifyToken(refreshToken);
+		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
+
+		const { role, token, token_expired_timestamp } = await this.userModel.findOne({ user_id: userId }).exec();
+		if (!token || token !== refreshToken) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
+
+		const currentTime = new Date().getTime() / 1000;
+		if (currentTime >= token_expired_timestamp.getTime()) {
+			throw new UnauthorizedException(ERROR_MESSAGE_EXPIRED_TOKEN);
+		}
+
+		return { accessToken: this.authService.createAccessToken({ userId: userId, role: role }) };
+	}
+
+	private extractTokenFromHeader(authorization: string): string | undefined {
+		const [type, token] = authorization.split(' ') ?? [];
+		return type === 'Bearer' ? token : undefined; // JWT 구분
 	}
 }
