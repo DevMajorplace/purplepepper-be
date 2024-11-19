@@ -8,12 +8,15 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
+import { Request } from 'express';
 import { Model } from 'mongoose';
 import { validatePassword, validateUserId } from 'src/common/utils/validation.util';
 import {
 	ERROR_MESSAGE_DUPLICATE_ID,
 	ERROR_MESSAGE_HASH_FAILED,
 	ERROR_MESSAGE_INVALID_ROLE,
+	ERROR_MESSAGE_INVALID_TOKEN,
+	ERROR_MESSAGE_NO_TOKEN,
 	ERROR_MESSAGE_PARENT_NOT_FOUND,
 	ERROR_MESSAGE_STATUS_DECLINED,
 	ERROR_MESSAGE_STATUS_PENDING,
@@ -117,7 +120,7 @@ export class UserService {
 	}
 
 	// 로그인
-	async login(user: LoginReqDto, @Req() req: any): Promise<{ accessToken: string }> {
+	async login(user: LoginReqDto, @Req() req: any): Promise<{ accessToken: string; refreshToken: string }> {
 		const userId = user.user_id;
 		const password = user.password;
 
@@ -159,16 +162,33 @@ export class UserService {
 			}
 
 			const payload = { userId: userId, role: existedUser.role };
-			const accessToken = this.authService.createToken(payload);
+			const accessToken = this.authService.createAccessToken(payload);
 
 			// 로그인 성공 시 로그 추가 및 실패 횟수 초기화
 			await this.loginLogModel.create(loginLog);
 			await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: 0 } });
 
-			return { accessToken };
+			const refreshToken = this.authService.createRefreshToken({ userId: userId });
+
+			return { accessToken, refreshToken };
 		} catch (error) {
 			throw error;
 		}
+	}
+
+	async tokenRefresh(@Req() req: Request): Promise<{ accessToken: string }> {
+		const token = req.cookies?.refresh_token;
+		if (!token) throw new UnauthorizedException(ERROR_MESSAGE_NO_TOKEN);
+
+		const { userId } = this.authService.verifyRefreshToken(token);
+		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
+
+		const user = await this.userModel.findOne({ user_id: userId }).exec();
+		if (!user) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+
+		return { accessToken: this.authService.createAccessToken({ userId: user.user_id, role: user.role }) };
 	}
 
 	// 내 정보 확인
