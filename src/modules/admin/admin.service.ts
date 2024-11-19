@@ -5,7 +5,7 @@ import * as moment from 'moment-timezone';
 import { Model } from 'mongoose';
 import { setApprovedDateQuery, setBaseQuery } from 'src/common/utils/filter.util';
 import { paginate, PaginationResult } from 'src/common/utils/pagination.util';
-import { isNotEmptyUserId, validatePassword } from 'src/common/utils/validation.util';
+import { isNotEmptyUserId, validatePassword, validHierarchy } from 'src/common/utils/validation.util';
 import {
 	ERROR_MESSAGE_INVALID_ROLE,
 	ERROR_MESSAGE_NO_USER_IDS,
@@ -32,32 +32,6 @@ export class AdminService {
 		@InjectModel(User.name) private readonly userModel: Model<User>,
 		@InjectModel(LoginLog.name) private readonly loginLogModel: Model<LoginLog>,
 	) {}
-
-	// 상위 회원 3단계까지 찾는 함수
-	private async findHierarchy(userId: string, maxDepth: number = 3): Promise<string[]> {
-		const hierarchy: string[] = [];
-		let currentUserId = userId;
-
-		for (let i = 0; i < maxDepth; i++) {
-			// 상위 추천인 user_id를 찾기
-			const user = await this.userModel.findOne({ user_id: currentUserId }).exec();
-
-			// 현재 추천인이 존재하지 않거나 비활성화 상태이면 중단
-			if (!user || !user.parent_ids || user.parent_ids.length === 0 || !user.is_active) break;
-
-			// 다음 상위 추천인 user_id를 가져옴
-			const nextUserId = user.parent_ids[0];
-
-			// 유효한 추천인 user_id 중 is_active가 true인 경우에만 추가
-			const nextUser = await this.userModel.findOne({ user_id: nextUserId, is_active: true }).exec();
-			if (!nextUser) break; // 다음 상위 추천인이 존재하지 않거나 비활성화 상태이면 중단
-
-			hierarchy.push(nextUserId);
-			currentUserId = nextUserId;
-		}
-
-		return hierarchy;
-	}
 
 	// 공통 아이디 조회 함수
 	private async findUserById(userId: string, role: 'agency' | 'client') {
@@ -137,20 +111,18 @@ export class AdminService {
 		}
 
 		// parent_id를 기준으로 parent_ids 갱신
-		console.log(userToUpdate.role);
 		if (userToUpdate.role === 'client') {
 			const clientReqDto = detailReqDto as ClientDetailReqDto;
 
-			if (clientReqDto.parent_id && clientReqDto.parent_id !== user.parent_ids?.[0]) {
+			if (clientReqDto.parent_id) {
 				// 새로운 parent_ids 계산
-				const parentHierarchy = await this.findHierarchy(clientReqDto.parent_id);
+				const parentHierarchy = await validHierarchy(clientReqDto.parent_id);
 
 				if (!parentHierarchy) {
 					throw new NotFoundException(ERROR_MESSAGE_PARENT_NOT_FOUND);
 				}
 
 				const newParentIds = [clientReqDto.parent_id, ...parentHierarchy];
-				console.log('새로운 parent_ids:', newParentIds);
 
 				// 최대 3단계까지만 저장
 				updateFields.parent_ids = newParentIds.slice(0, 3); // 최대 3단계
