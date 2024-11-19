@@ -18,11 +18,14 @@ import {
 	ERROR_MESSAGE_STATUS_DECLINED,
 	ERROR_MESSAGE_STATUS_PENDING,
 	ERROR_MESSAGE_USER_LOGIN_FAILED,
+	ERROR_MESSAGE_USER_NOT_FOUND,
 } from '../../common/constants/error-messages';
 import { AuthService } from '../auth/auth.service';
 import { LoginReqDto } from './dto/req/login.req.dto';
 import { SignUpReqDto } from './dto/req/signup.req.dto';
+import { UserDetailReqDto } from './dto/req/user.detail.req.dto';
 import { SignUpResDto } from './dto/res/signup.res.dto';
+import { UserDetailResDto } from './dto/res/user.detail.res.dto';
 import { LoginLog } from './schemas/login-log.schema';
 import { User } from './schemas/user.schema';
 
@@ -166,5 +169,81 @@ export class UsersService {
 		} catch (error) {
 			throw error;
 		}
+	}
+
+	// 내 정보 확인
+	async getMyDetail(@Req() req: any): Promise<UserDetailResDto> {
+		const userId = req.user.userId;
+		const role = req.user.role;
+
+		// 사용자 정보 조회
+		const user = await this.userModel.findOne({ user_id: userId }).exec();
+		if (!user) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+
+		// 총판은 상위 회원 정보 반환하지 않음
+		const myInfo: Partial<UserDetailResDto> = {
+			company_name: user.company_name,
+			user_id: user.user_id,
+			manager_name: user.manager_name,
+			manager_contact: user.manager_contact,
+			account_bank: user.account_bank,
+			account_number: user.account_number,
+			account_holder: user.account_holder,
+			// role이 client일 때만 parent_id 추가
+			...(role === 'client' ? { parent_id: user.parent_ids?.[0] ?? null } : {}),
+		};
+
+		return new UserDetailResDto(myInfo, role);
+	}
+
+	// 내 정보 변경
+	async updateMyDetail(@Req() req: any, detailReqDto: UserDetailReqDto): Promise<UserDetailResDto> {
+		const userId = req.user.userId;
+		const role = req.user.role;
+		// 사용자 정보 조회
+		const user = await this.userModel.findOne({ user_id: userId }).exec();
+		if (!user) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+
+		// 비밀번호 변경 시 비밀번호 정책 검사
+		const updateFields: any = {};
+		if (detailReqDto.password) {
+			validatePassword(detailReqDto.password); // 비밀번호 정책 검사
+
+			const isSamePassword = await bcrypt.compare(detailReqDto.password, user.password);
+			if (!isSamePassword) {
+				updateFields.password = await bcrypt.hash(detailReqDto.password, 10); // 비밀번호 해싱
+			}
+		}
+
+		// null이나 undefined가 아니면 변경으로 인식
+		Object.entries(detailReqDto).forEach(([key, value]) => {
+			if (
+				value !== undefined && // 값이 정의되어 있고
+				value !== null && // null이 아니며
+				key !== 'password' // 비밀번호는 별도로 처리했으므로 제외
+			) {
+				updateFields[key] = value;
+			}
+		});
+
+		if (Object.keys(updateFields).length === 0) {
+			// 변경 사항이 없으므로, 현재 사용자 정보 그대로 반환
+			return new UserDetailResDto(user, role);
+		}
+
+		// 변경된 정보 업데이트 및 반환
+		const updatedUser = await this.userModel
+			.findOneAndUpdate(
+				{ _id: user._id },
+				{ $set: updateFields },
+				{ new: true }, // 업데이트된 문서를 반환
+			)
+			.exec();
+
+		return new UserDetailResDto(updatedUser, role);
 	}
 }
