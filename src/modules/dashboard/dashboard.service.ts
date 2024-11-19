@@ -3,8 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as moment from 'moment-timezone';
 import { Model } from 'mongoose';
 import { ERROR_MESSAGE_INVALID_ROLE, ERROR_MESSAGE_PERMISSION_DENIED } from 'src/common/constants/error-messages';
-import { Board } from '../boards/schemas/board.schema';
-import { User } from '../users/schemas/user.schema';
+import { Board } from '../board/schemas/board.schema';
+import { User } from '../user/schemas/user.schema';
 import { ClientNumberResDto } from './dto/res/client.number.res.dto';
 import { NoticeResDto } from './dto/res/notice.res.dto';
 

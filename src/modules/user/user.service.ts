@@ -30,7 +30,7 @@ import { LoginLog } from './schemas/login-log.schema';
 import { User } from './schemas/user.schema';
 
 @Injectable()
-export class UsersService {
+export class UserService {
 	constructor(
 		@InjectModel(User.name) private readonly userModel: Model<User>,
 		@InjectModel(LoginLog.name) private readonly loginLogModel: Model<LoginLog>,

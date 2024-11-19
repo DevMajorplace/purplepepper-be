@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
+import * as bcrypt from 'bcrypt';
 import * as moment from 'moment-timezone';
 import { Model } from 'mongoose';
 import { setApprovedDateQuery, setBaseQuery } from 'src/common/utils/filter.util';
@@ -8,13 +9,14 @@ import { isNotEmptyUserId, validatePassword } from 'src/common/utils/validation.
 import {
 	ERROR_MESSAGE_INVALID_ROLE,
 	ERROR_MESSAGE_NO_USER_IDS,
+	ERROR_MESSAGE_PARENT_NOT_FOUND,
 	ERROR_MESSAGE_USER_NOT_FOUND,
 	ERROR_MESSAGE_USERS_NOT_FOUND,
 } from '../../common/constants/error-messages';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
-import { LoginLog } from '../users/schemas/login-log.schema';
-import { User } from '../users/schemas/user.schema';
+import { LoginLog } from '../user/schemas/login-log.schema';
+import { User } from '../user/schemas/user.schema';
 import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
 import { AgencyListReqDto } from './dto/req/agency.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
@@ -30,6 +32,32 @@ export class AdminService {
 		@InjectModel(User.name) private readonly userModel: Model<User>,
 		@InjectModel(LoginLog.name) private readonly loginLogModel: Model<LoginLog>,
 	) {}
+
+	// 상위 회원 3단계까지 찾는 함수
+	private async findHierarchy(userId: string, maxDepth: number = 3): Promise<string[]> {
+		const hierarchy: string[] = [];
+		let currentUserId = userId;
+
+		for (let i = 0; i < maxDepth; i++) {
+			// 상위 추천인 user_id를 찾기
+			const user = await this.userModel.findOne({ user_id: currentUserId }).exec();
+
+			// 현재 추천인이 존재하지 않거나 비활성화 상태이면 중단
+			if (!user || !user.parent_ids || user.parent_ids.length === 0 || !user.is_active) break;
+
+			// 다음 상위 추천인 user_id를 가져옴
+			const nextUserId = user.parent_ids[0];
+
+			// 유효한 추천인 user_id 중 is_active가 true인 경우에만 추가
+			const nextUser = await this.userModel.findOne({ user_id: nextUserId, is_active: true }).exec();
+			if (!nextUser) break; // 다음 상위 추천인이 존재하지 않거나 비활성화 상태이면 중단
+
+			hierarchy.push(nextUserId);
+			currentUserId = nextUserId;
+		}
+
+		return hierarchy;
+	}
 
 	// 공통 아이디 조회 함수
 	private async findUserById(userId: string, role: 'agency' | 'client') {
@@ -91,29 +119,65 @@ export class AdminService {
 			throw new BadRequestException(ERROR_MESSAGE_INVALID_ROLE);
 		}
 
-		// 비밀번호 변경 시 비밀번호 정책 검사
-		if (detailReqDto.password) {
-			validatePassword(detailReqDto.password);
+		// 업데이트 대상 유저를 가져오기
+		const userToUpdate = await this.userModel.findOne({ user_id: userId });
+		if (!userToUpdate) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
 		}
 
 		const updateFields: any = {};
+		// 비밀번호 변경 로직 (기존 값과 비교)
+		if (detailReqDto.password) {
+			validatePassword(detailReqDto.password); // 비밀번호 정책 검사
 
-		// null이나 undefined가 아니면 변경으로 인식
+			const isSamePassword = await bcrypt.compare(detailReqDto.password, user.password);
+			if (!isSamePassword) {
+				updateFields.password = await bcrypt.hash(detailReqDto.password, 10); // 비밀번호 해싱
+			}
+		}
+
+		// parent_id를 기준으로 parent_ids 갱신
+		console.log(userToUpdate.role);
+		if (userToUpdate.role === 'client') {
+			const clientReqDto = detailReqDto as ClientDetailReqDto;
+
+			if (clientReqDto.parent_id && clientReqDto.parent_id !== user.parent_ids?.[0]) {
+				// 새로운 parent_ids 계산
+				const parentHierarchy = await this.findHierarchy(clientReqDto.parent_id);
+
+				if (!parentHierarchy) {
+					throw new NotFoundException(ERROR_MESSAGE_PARENT_NOT_FOUND);
+				}
+
+				const newParentIds = [clientReqDto.parent_id, ...parentHierarchy];
+				console.log('새로운 parent_ids:', newParentIds);
+
+				// 최대 3단계까지만 저장
+				updateFields.parent_ids = newParentIds.slice(0, 3); // 최대 3단계
+			}
+		}
+
+		// 나머지 필드 업데이트 로직
 		Object.entries(detailReqDto).forEach(([key, value]) => {
-			if (value !== undefined && value !== user[key]) {
+			if (
+				value !== undefined && // 값이 정의되어 있고
+				value !== null && // null이 아니며
+				key !== 'password' && // 비밀번호는 별도로 처리했으므로 제외
+				key !== 'parent_id' // parent_id는 별도로 처리했으므로 제외
+			) {
 				updateFields[key] = value;
 			}
 		});
 
+		// 변경 사항 없으면 기존 데이터 반환
 		if (Object.keys(updateFields).length === 0) {
-			// 변경 사항이 없으므로, 현재 사용자 정보 그대로 반환
 			return new detailResDto(user);
 		}
 
 		// 변경된 정보 업데이트 및 반환
 		const updatedUser = await this.userModel
 			.findOneAndUpdate(
-				{ _id: user._id },
+				{ user_id: user.user_id },
 				{ $set: updateFields },
 				{ new: true }, // 업데이트된 문서를 반환
 			)
