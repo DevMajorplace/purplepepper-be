@@ -10,7 +10,7 @@ import { BoardListResDto } from './dto/res/board.list.res.dto';
 import { Board } from './schemas/board.schema';
 
 @Injectable()
-export class BoardsService {
+export class BoardService {
 	constructor(@InjectModel(Board.name) private readonly boardModel: Model<Board>) {}
 
 	//전체 목록 조회

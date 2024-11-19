@@ -4,18 +4,20 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MongooseDatabaseModule } from './db/mongoose.module';
 import { AdminModule } from './modules/admin/admin.module';
-import { BoardsModule } from './modules/boards/boards.module';
+import { AgencyModule } from './modules/agency/agency.module';
+import { BoardModule } from './modules/board/board.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
-import { UsersModule } from './modules/users/users.module';
+import { UserModule } from './modules/user/user.module';
 
 @Module({
 	imports: [
 		ConfigModule.forRoot({ isGlobal: true }),
 		MongooseDatabaseModule,
-		UsersModule,
-		BoardsModule,
+		UserModule,
+		BoardModule,
 		AdminModule,
 		DashboardModule,
+		AgencyModule,
 	],
 	controllers: [AppController],
 	providers: [AppService],
