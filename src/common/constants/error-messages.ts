@@ -23,3 +23,6 @@ export const ERROR_MESSAGE_PERMISSION_DENIED = '접근 권한이 없는 계정�
 // Admin
 export const ERROR_MESSAGE_USERS_NOT_FOUND = (ids: string) => `다음 사용자 ID를 찾을 수 없습니다: ${ids}`;
 export const ERROR_MESSAGE_USER_ID_MISSING = '사용자 ID를 입력해주세요.';
+
+// Client
+export const ERROR_MESSAGE_INVALID_AMOUNT = '충전 금액은 5만 캐시부터 1000만 캐시까지 가능합니다.';
