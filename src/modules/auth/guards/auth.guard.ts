@@ -15,7 +15,7 @@ export class AuthGuard implements CanActivate {
 		}
 
 		// 요청 객체에 사용자 정보를 추가하여 이후 로직에서 사용 가능
-		const payload = this.authService.verifyAccessToken(token);
+		const payload = this.authService.verifyToken(token, 'access');
 		request.user = payload;
 
 		return true;

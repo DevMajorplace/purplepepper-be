@@ -139,13 +139,13 @@ export class UserService {
 			}
 
 			const payload = { userId: userId, role: existedUser.role };
-			const accessToken = this.authService.createAccessToken(payload);
+			const accessToken = this.authService.createToken(payload, 'access');
 
 			// 로그인 성공 시 로그 추가 및 실패 횟수 초기화
 			await this.loginLogModel.create(loginLog);
 			await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: 0 } });
 
-			const refreshToken = this.authService.createRefreshToken({ userId: userId });
+			const refreshToken = this.authService.createToken({ userId: userId }, 'refresh');
 
 			return { accessToken, refreshToken };
 		} catch (error) {
@@ -157,7 +157,7 @@ export class UserService {
 		const token = req.cookies?.refresh_token;
 		if (!token) throw new UnauthorizedException(ERROR_MESSAGE_NO_TOKEN);
 
-		const { userId } = this.authService.verifyRefreshToken(token);
+		const { userId } = this.authService.verifyToken(token, 'refresh');
 		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
 
 		const user = await this.userModel.findOne({ user_id: userId }).exec();
@@ -165,7 +165,7 @@ export class UserService {
 			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
 		}
 
-		return { accessToken: this.authService.createAccessToken({ userId: user.user_id, role: user.role }) };
+		return { accessToken: this.authService.createToken({ userId: user.user_id, role: user.role }, 'access') };
 	}
 
 	// 내 정보 확인
@@ -268,7 +268,7 @@ export class UserService {
 		}
 
 		const payload = { userId: user.user_id, resetToken: true };
-		return { resetToken: this.authService.createPasswordResetToken(payload) };
+		return { resetToken: this.authService.createToken(payload, 'reset') };
 	}
 
 	async resetUserPassword(@Req() req: Request, password: string): Promise<{ status: string }> {
@@ -276,7 +276,7 @@ export class UserService {
 		const token = req.cookies?.reset_token;
 		if (!token) throw new UnauthorizedException(ERROR_MESSAGE_NO_TOKEN);
 
-		const { userId, resetToken } = this.authService.verifyPasswordResetToken(token);
+		const { userId, resetToken } = this.authService.verifyToken(token, 'reset');
 		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
 		if (!resetToken) throw new UnauthorizedException(ERROR_MESSAGE_PERMISSION_DENIED);
 
