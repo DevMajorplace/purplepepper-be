@@ -5,6 +5,7 @@ import { RoleGuard } from '../auth/guards/role.guard';
 import { UserRoles } from '../auth/types/role.decorator';
 import { Role } from '../auth/types/role.enum';
 import { BoardService } from './board.service';
+import { BoardListReqDto } from './dto/req/board.list.req.dto';
 import { BoardReqDto } from './dto/req/board.req.dto';
 import { BoardDetailResDto } from './dto/res/board.detail.res.dto';
 import { BoardListResDto } from './dto/res/board.list.res.dto';
@@ -23,10 +24,10 @@ export class BoardController {
 	async getBoardsList(
 		@Query('page') page: number,
 		@Query('pageSize') pageSize: number,
-		@Query('category') category: string,
-		@Query('title') title: string,
+		@Query() boardsListReqDto: BoardListReqDto,
 		@Req() req: Request,
 	): Promise<BoardListResDto> {
+		const { category, title } = boardsListReqDto;
 		return this.boardService.getAllBoards(page, pageSize, category, title, req);
 	}
 
