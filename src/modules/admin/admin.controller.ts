@@ -14,6 +14,7 @@ import { ClientListReqDto } from './dto/req/client.list.req.dto';
 import { UsersUpdateReqDto } from './dto/req/user.status.update.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
+import { CashRequestListResDto } from './dto/res/cash.request.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
 import { UsersUpdateResultResDto } from './dto/res/user.update.result.res.dto';
@@ -131,5 +132,21 @@ export class AdminController {
 		@Body() agencyDetailReqDto: AgencyDetailReqDto,
 	): Promise<AgencyDetailResDto> {
 		return this.adminService.updateAgencyDetail(userId, agencyDetailReqDto);
+	}
+
+	// 광고주 캐시 충전 요청 확인
+	@Get('charge-request')
+	@ApiResponse({ type: CashRequestListResDto })
+	async getChargeRequest(
+		@Query('page') page: number,
+		@Query('pageSize') pageSize: number,
+	): Promise<{
+		data: CashRequestListResDto[];
+		totalItems: number;
+		totalPages: number;
+		currentPage: number;
+		pageSize: number;
+	}> {
+		return this.adminService.getChargeRequest(page, pageSize);
 	}
 }

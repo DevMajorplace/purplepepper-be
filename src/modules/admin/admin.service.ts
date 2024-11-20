@@ -15,6 +15,8 @@ import {
 } from '../../common/constants/error-messages';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
+import { CashLog } from '../client/schemas/cash-log.schema';
+import { CashLogStatus } from '../client/types/cash-log.enum';
 import { LoginLog } from '../user/schemas/login-log.schema';
 import { User } from '../user/schemas/user.schema';
 import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
@@ -23,6 +25,7 @@ import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
+import { CashRequestListResDto } from './dto/res/cash.request.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
 
@@ -31,6 +34,7 @@ export class AdminService {
 	constructor(
 		@InjectModel(User.name) private readonly userModel: Model<User>,
 		@InjectModel(LoginLog.name) private readonly loginLogModel: Model<LoginLog>,
+		@InjectModel(CashLog.name) private readonly cashLogModel: Model<CashLog>,
 	) {}
 
 	// 공통 아이디 조회 함수
@@ -391,5 +395,66 @@ export class AdminService {
 	// 단일 총판 정보 변경
 	async updateAgencyDetail(userId: string, agencyDetailReqDto: AgencyDetailReqDto): Promise<AgencyDetailResDto> {
 		return this.updateUserDetail(userId, agencyDetailReqDto, AgencyDetailResDto, 'agency');
+	}
+
+	// 광고주 캐시 충전 요청 확인
+	async getChargeRequest(
+		page: number,
+		pageSize: number,
+	): Promise<{
+		data: CashRequestListResDto[];
+		missingUserIds: string[];
+		totalItems: number;
+		totalPages: number;
+		currentPage: number;
+		pageSize: number;
+	}> {
+		// 페이지네이션 호출
+		const cashLogs = await paginate(this.cashLogModel, page, pageSize);
+
+		// 캐시로그배열에서 userIdx 추출
+		const userIdxs = cashLogs.data.map(cash => cash.user_idx);
+
+		// userIds로 사용자 정보 조회
+		const users = await this.userModel.find({ _id: { $in: userIdxs } }).exec();
+		const userMap = new Map(users.map(user => [user._id.toString(), user]));
+
+		// 없는 사용자 ID 추출
+		const missingUserIdxs = userIdxs.filter(userIdx => !userMap.has(userIdx.toString()));
+
+		// 없는 사용자 ID에서 user_id 값만 추출
+		const missingUserIds = cashLogs.data
+			.filter(cashLog => missingUserIdxs.includes(cashLog.user_idx))
+			.map(cashLog => cashLog.user_idx);
+
+		const data = cashLogs.data.map(cashLog => {
+			const user = userMap.get(cashLog.user_idx.toString());
+
+			return new CashRequestListResDto({
+				cash_log_idx: cashLog._id.toString(),
+				user_idx: cashLog.user_idx,
+				company_name: user.company_name,
+				depositor: cashLog.depositor,
+				amount: cashLog.amount,
+				created_at: cashLog.created_at,
+				status: cashLog.status,
+				processed_at:
+					cashLog.status === CashLogStatus.APPROVED
+						? cashLog.approved_at
+						: ['REJECTED', 'ERROR'].includes(cashLog.status)
+							? cashLog.declined_at
+							: null, // 처리 시점 설정
+				rejection_reason: cashLog.rejection_reason || '', // 기본값 빈 문자열
+			});
+		});
+
+		return {
+			data,
+			missingUserIds: missingUserIds,
+			totalItems: cashLogs.totalItems,
+			totalPages: cashLogs.totalPages,
+			currentPage: cashLogs.currentPage,
+			pageSize: cashLogs.pageSize,
+		};
 	}
 }
