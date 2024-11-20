@@ -18,12 +18,14 @@ import {
 	ERROR_MESSAGE_INVALID_TOKEN,
 	ERROR_MESSAGE_NO_TOKEN,
 	ERROR_MESSAGE_PARENT_NOT_FOUND,
+	ERROR_MESSAGE_PERMISSION_DENIED,
 	ERROR_MESSAGE_STATUS_DECLINED,
 	ERROR_MESSAGE_STATUS_PENDING,
 	ERROR_MESSAGE_USER_LOGIN_FAILED,
 	ERROR_MESSAGE_USER_NOT_FOUND,
 } from '../../common/constants/error-messages';
 import { AuthService } from '../auth/auth.service';
+import { FindUserDataReqDto } from './dto/req/find.user.data.req.dto';
 import { LoginReqDto } from './dto/req/login.req.dto';
 import { SignUpReqDto } from './dto/req/signup.req.dto';
 import { UserDetailReqDto } from './dto/req/user.detail.req.dto';
@@ -240,5 +242,54 @@ export class UserService {
 			.exec();
 
 		return new UserDetailResDto(updatedUser, role);
+	}
+
+	async findUserId(findUserDataReqDto: FindUserDataReqDto): Promise<{ userId: string }> {
+		const { manager_name, manager_contact } = findUserDataReqDto;
+		if (!manager_name || !manager_contact) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+
+		const user = await this.userModel.findOne({ manager_name: manager_name, manager_contact: manager_contact }).exec();
+		if (!user) throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+
+		return { userId: user.user_id };
+	}
+
+	async findUserPassword(findUserDataReqDto: FindUserDataReqDto): Promise<{ resetToken: string }> {
+		const { user_id, manager_name, manager_contact } = findUserDataReqDto;
+		if (!user_id || !manager_name || !manager_contact) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+
+		const user = await this.userModel.findOne({ manager_name: manager_name, manager_contact: manager_contact }).exec();
+		if (!user) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+
+		const payload = { userId: user.user_id, resetToken: true };
+		return { resetToken: this.authService.createPasswordResetToken(payload) };
+	}
+
+	async resetUserPassword(@Req() req: Request, password: string): Promise<{ status: string }> {
+		validatePassword(password);
+		const token = req.cookies?.reset_token;
+		if (!token) throw new UnauthorizedException(ERROR_MESSAGE_NO_TOKEN);
+
+		const { userId, resetToken } = this.authService.verifyPasswordResetToken(token);
+		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
+		if (!resetToken) throw new UnauthorizedException(ERROR_MESSAGE_PERMISSION_DENIED);
+
+		const user = await this.userModel.findOne({ user_id: userId }).exec();
+		if (!user) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+
+		const hashedPassword = await bcrypt.hash(password, 10).catch(() => {
+			throw new InternalServerErrorException(ERROR_MESSAGE_HASH_FAILED);
+		});
+		await this.userModel.updateOne({ _id: user._id }, { $set: { password: hashedPassword } });
+
+		return { status: 'success' };
 	}
 }

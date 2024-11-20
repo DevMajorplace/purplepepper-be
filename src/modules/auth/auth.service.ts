@@ -10,6 +10,14 @@ export class AuthService {
 		private readonly configService: ConfigService,
 	) {}
 
+	createPasswordResetToken(payload: any): string {
+		// payload: { userId, reset }
+		return this.jwtService.sign(payload, {
+			secret: this.configService.get<string>('JWT_RESET_TOKEN'),
+			expiresIn: this.configService.get<string>('JWT_RESET_EXPIRED_TIME'),
+		});
+	}
+
 	// Create Token -> Save Refresh Token in Database -> Sending Tokens
 	createAccessToken(payload: any): string {
 		// payload: { userId, role }
@@ -25,6 +33,24 @@ export class AuthService {
 			secret: this.configService.get<string>('JWT_REFRESH_TOKEN'),
 			expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRED_TIME'),
 		});
+	}
+
+	verifyPasswordResetToken(token: string): any {
+		try {
+			const verify = this.jwtService.verify(token, {
+				secret: this.configService.get<string>('JWT_RESET_TOKEN'),
+			});
+			return verify;
+		} catch (error) {
+			switch (error.message) {
+				case 'INVALID_TOKEN':
+				case 'TOKEN_IS_ARRAY':
+				case 'NO_USER':
+					throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
+				case 'EXPIRED_TOKEN':
+					throw new UnauthorizedException(ERROR_MESSAGE_EXPIRED_TOKEN);
+			}
+		}
 	}
 
 	verifyAccessToken(token: string): any {
