@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Patch, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
-import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
 import { UserStatusQueryDto } from '../admin/dto/user-status-query.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
@@ -12,10 +11,12 @@ import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
 import { AgencyListReqDto } from './dto/req/agency.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
+import { UsersUpdateReqDto } from './dto/req/user.status.update.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
+import { UsersUpdateResultResDto } from './dto/res/user.update.result.res.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth('access-token')
@@ -27,6 +28,7 @@ export class AdminController {
 
 	// 가입 대기/거절 회원 조회
 	@Get('status')
+	@ApiResponse({ type: UserStatusResDto })
 	async findUsersByStatus(
 		@Query('page') page: number,
 		@Query('pageSize') pageSize: number,
@@ -43,22 +45,27 @@ export class AdminController {
 
 	// 가입 승인(단일, 다중 사용자)
 	@Patch('approve')
+	@ApiResponse({ type: UsersUpdateResultResDto })
 	async approveUsers(
-		@Body() userIds: string[],
-	): Promise<{ updatedUsers: UserStatusUpdateResDto[]; missingUserIds: string[] }> {
+		@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })) body: UsersUpdateReqDto,
+	): Promise<UsersUpdateResultResDto> {
+		const { userIds } = body;
 		return this.adminService.updateUserStatus(userIds, 'approved');
 	}
 
 	// 가입 거절(단일, 다중 사용자)
 	@Patch('decline')
+	@ApiResponse({ type: UsersUpdateResultResDto })
 	async declineUsers(
-		@Body() userIds: string[],
-	): Promise<{ updatedUsers: UserStatusUpdateResDto[]; missingUserIds: string[] }> {
+		@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })) body: UsersUpdateReqDto,
+	): Promise<UsersUpdateResultResDto> {
+		const { userIds } = body;
 		return this.adminService.updateUserStatus(userIds, 'declined');
 	}
 
 	// 가입된 광고주 목록 조회
 	@Get('clients')
+	@ApiResponse({ type: ClientListResDto })
 	async getAllClients(
 		@Query('page') page: number,
 		@Query('pageSize') pageSize: number,
@@ -75,12 +82,14 @@ export class AdminController {
 
 	// 단일 광고주 상세 조회
 	@Get('client')
+	@ApiResponse({ type: ClientDetailResDto })
 	async getClientDetail(@Query('userId') userId: string): Promise<ClientDetailResDto> {
 		return this.adminService.getClientDetail(userId);
 	}
 
 	// 단일 광고주 상세 정보 변경
 	@Patch('client')
+	@ApiResponse({ type: ClientDetailResDto })
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async updateClientDetail(
 		@Query('userId') userId: string,
@@ -91,6 +100,7 @@ export class AdminController {
 
 	// 가입된 총판 목록 조회
 	@Get('agencies')
+	@ApiResponse({ type: AgencyListResDto })
 	async getAllAgencies(
 		@Query('page') page: number,
 		@Query('pageSize') pageSize: number,
@@ -107,12 +117,14 @@ export class AdminController {
 
 	// 단일 총판 상세 조회
 	@Get('agency')
+	@ApiResponse({ type: AgencyDetailResDto })
 	async getAgencyDetail(@Query('userId') userId: string): Promise<AgencyDetailResDto> {
 		return this.adminService.getAgencyDetail(userId);
 	}
 
 	// 단일 총판 상세 정보 변경
 	@Patch('agency')
+	@ApiResponse({ type: AgencyDetailResDto })
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async updateAgencyDetail(
 		@Query('userId') userId: string,

@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNotEmpty, IsNumber } from 'class-validator';
 
-export class ClientNumberResDto {
+export class ClientStatResDto {
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ description: '광고주 수' })
@@ -12,7 +12,7 @@ export class ClientNumberResDto {
 	@ApiProperty({ description: '증가율' })
 	public readonly growthRate: number;
 
-	constructor(partial: Partial<ClientNumberResDto>) {
+	constructor(partial: Partial<ClientStatResDto>) {
 		Object.assign(this, partial);
 	}
 }

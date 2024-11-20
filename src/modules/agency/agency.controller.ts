@@ -1,5 +1,5 @@
 import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ClientListReqDto } from '../admin/dto/req/client.list.req.dto';
 import { ClientListResDto } from '../admin/dto/res/client.list.res.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -17,6 +17,7 @@ export class AgencyController {
 
 	// 가입된 광고주 목록 조회
 	@Get('clients')
+	@ApiResponse({ type: ClientListResDto })
 	@UserRoles(Role.Agency)
 	async getAllClients(
 		@Query('page') page: number,

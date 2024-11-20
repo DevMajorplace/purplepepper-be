@@ -179,7 +179,7 @@ export class AdminService {
 
 	// 가입 상태 업데이트(단일, 다중 사용자 승인 거절)
 	async updateUserStatus(
-		userIds: string[] | string,
+		userIds: string[],
 		status: 'approved' | 'declined',
 	): Promise<{ updatedUsers: UserStatusUpdateResDto[]; missingUserIds: string[] }> {
 		// userIds가 단일 문자열인 경우 배열로 변환

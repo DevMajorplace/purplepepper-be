@@ -17,14 +17,16 @@ export class UserController {
 
 	// 회원가입
 	@Post('signup')
-	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	@ApiResponse({ type: SignUpResDto })
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async signUp(@Body() user: SignUpReqDto): Promise<SignUpResDto> {
 		return this.userService.signUp(user);
 	}
 
 	// 로그인
 	@Post('login')
+	@ApiResponse({ type: SignUpResDto })
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async login(@Body() user: LoginReqDto, @Req() req: any, @Res() res: Response) {
 		const { accessToken, refreshToken } = await this.userService.login(user, req);
 		res.cookie('access_token', accessToken, { httpOnly: true });
@@ -54,6 +56,7 @@ export class UserController {
 	@Get('myInfo')
 	@ApiBearerAuth('access-token')
 	@UseGuards(AuthGuard, RoleGuard)
+	@ApiResponse({ type: UserDetailResDto })
 	async myInfo(@Req() req: any): Promise<any> {
 		return this.userService.getMyDetail(req);
 	}
@@ -62,6 +65,7 @@ export class UserController {
 	@Patch('myInfo')
 	@ApiBearerAuth('access-token')
 	@UseGuards(AuthGuard)
+	@ApiResponse({ type: UserDetailResDto })
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async updateClientDetail(@Req() req: any, @Body() userDetailReqDto: UserDetailReqDto): Promise<UserDetailResDto> {
 		return this.userService.updateMyDetail(req, userDetailReqDto);
