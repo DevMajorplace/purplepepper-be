@@ -6,9 +6,11 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { UserRoles } from '../auth/types/role.decorator';
 import { Role } from '../auth/types/role.enum';
+import { CashLogStatus } from '../client/types/cash-log.enum';
 import { AdminService } from './admin.service';
 import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
 import { AgencyListReqDto } from './dto/req/agency.list.req.dto';
+import { CashRequestListReqDto } from './dto/req/cash.request.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
 import { UsersUpdateReqDto } from './dto/req/user.status.update.req.dto';
@@ -148,5 +150,23 @@ export class AdminController {
 		pageSize: number;
 	}> {
 		return this.adminService.getChargeRequest(page, pageSize);
+	}
+
+	// 광고주 캐시 충전 요청 승인
+	@Patch('charge-request/approve')
+	@ApiResponse({ type: CashRequestListResDto })
+	async approveChargeRequest(
+		@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })) body: CashRequestListReqDto,
+	): Promise<{ updatedCashLogs: CashRequestListResDto[]; missingCashLogIds: string[] }> {
+		return this.adminService.updateChargeRequest({ ...body, status: CashLogStatus.APPROVED });
+	}
+
+	// 광고주 캐시 충전 요청 거절
+	@Patch('charge-request/decline')
+	@ApiResponse({ type: CashRequestListResDto })
+	async declineChargeRequest(
+		@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })) body: CashRequestListReqDto,
+	): Promise<{ updatedCashLogs: CashRequestListResDto[]; missingCashLogIds: string[] }> {
+		return this.adminService.updateChargeRequest({ ...body, status: CashLogStatus.REJECTED });
 	}
 }

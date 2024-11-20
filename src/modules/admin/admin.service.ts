@@ -7,7 +7,10 @@ import { setApprovedDateQuery, setBaseQuery } from 'src/common/utils/filter.util
 import { paginate, PaginationResult } from 'src/common/utils/pagination.util';
 import { isNotEmptyUserId, validatePassword, validHierarchy } from 'src/common/utils/validation.util';
 import {
+	ERROR_MESSAGE_CASH_LOGS_NOT_FOUND,
 	ERROR_MESSAGE_INVALID_ROLE,
+	ERROR_MESSAGE_INVALID_STATUS_LOGS,
+	ERROR_MESSAGE_NO_REJECTION_REASON,
 	ERROR_MESSAGE_NO_USER_IDS,
 	ERROR_MESSAGE_PARENT_NOT_FOUND,
 	ERROR_MESSAGE_USER_NOT_FOUND,
@@ -21,6 +24,7 @@ import { LoginLog } from '../user/schemas/login-log.schema';
 import { User } from '../user/schemas/user.schema';
 import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
 import { AgencyListReqDto } from './dto/req/agency.list.req.dto';
+import { CashRequestListReqDto } from './dto/req/cash.request.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
@@ -120,7 +124,7 @@ export class AdminService {
 
 			if (clientReqDto.parent_id) {
 				// 새로운 parent_ids 계산
-				const parentHierarchy = await validHierarchy(clientReqDto.parent_id);
+				const parentHierarchy = await validHierarchy(clientReqDto.parent_id, this.userModel);
 
 				if (!parentHierarchy) {
 					throw new NotFoundException(ERROR_MESSAGE_PARENT_NOT_FOUND);
@@ -455,6 +459,70 @@ export class AdminService {
 			totalPages: cashLogs.totalPages,
 			currentPage: cashLogs.currentPage,
 			pageSize: cashLogs.pageSize,
+		};
+	}
+
+	// 광고주 캐시 충전 요청 승인/거절
+	async updateChargeRequest(
+		cashRequestListReqDto: CashRequestListReqDto & { status: CashLogStatus; rejection_reason?: string },
+	): Promise<{ updatedCashLogs: CashRequestListResDto[]; missingCashLogIds: string[] }> {
+		const { cashLogIdx, status, rejection_reason } = cashRequestListReqDto;
+
+		// 요청된 ID가 없으면 예외 처리
+		if (!cashLogIdx || cashLogIdx.length === 0) {
+			throw new BadRequestException('캐시 로그 ID가 제공되지 않았습니다.');
+		}
+
+		// 존재하는 캐시 로그 조회
+		const cashLogs = await this.cashLogModel.find({ _id: { $in: cashLogIdx } }).exec();
+		const foundIds = cashLogs.map(cashLog => cashLog._id.toString());
+		const missingCashLogIds = cashLogIdx.filter(id => !foundIds.includes(id));
+
+		// 누락된 ID가 있는 경우 경고 메시지 출력
+		if (missingCashLogIds.length > 0) {
+			throw new BadRequestException(ERROR_MESSAGE_CASH_LOGS_NOT_FOUND(missingCashLogIds.join(', ')));
+		}
+
+		// 대기 상태가 아닌 로그 필터링
+		const invalidLogs = cashLogs.filter(cashLog => cashLog.status !== CashLogStatus.PENDING);
+		if (invalidLogs.length > 0) {
+			throw new BadRequestException(
+				ERROR_MESSAGE_INVALID_STATUS_LOGS(invalidLogs.map(log => log._id.toString()).join(', ')),
+			);
+		}
+
+		// 업데이트 필드 정의
+		const updateFields: any = {
+			status: status as CashLogStatus,
+			approved_at: status === CashLogStatus.APPROVED ? new Date() : null,
+			declined_at: status === CashLogStatus.REJECTED ? new Date() : null,
+		};
+
+		// 거절인 경우 거절 사유 추가
+		if (status === CashLogStatus.REJECTED) {
+			if (!rejection_reason) {
+				throw new BadRequestException(ERROR_MESSAGE_NO_REJECTION_REASON);
+			}
+			updateFields.rejection_reason = rejection_reason;
+		}
+
+		// 업데이트 수행
+		const logsToUpdate = cashLogs.filter(
+			cashLog =>
+				cashLog.status === CashLogStatus.PENDING && // 대기 상태일 때만 승인/거절 가능
+				cashLog.status !== status, // 이미 요청된 상태와 동일하지 않은 경우만
+		);
+		if (logsToUpdate.length > 0) {
+			const logIdsToUpdate = logsToUpdate.map(cashLog => cashLog._id.toString());
+			await this.cashLogModel.updateMany({ _id: { $in: logIdsToUpdate } }, updateFields).exec();
+		}
+
+		// 업데이트 후 최신 상태 조회
+		const updatedCashLogs = await this.cashLogModel.find({ _id: { $in: foundIds } }).exec();
+
+		return {
+			updatedCashLogs: updatedCashLogs.map(cashLog => new CashRequestListResDto(cashLog)),
+			missingCashLogIds,
 		};
 	}
 }

@@ -47,6 +47,7 @@ export class UserService {
 		// 유저아이디 및 비밀번호 유효성 검사
 		validateUserId(userId);
 		validatePassword(user.password);
+		console.log(validateUserId(userId));
 
 		// 중복 아이디 확인
 		const existedUserId = await this.userModel.findOne({ user_id: userId }).exec();
@@ -66,7 +67,7 @@ export class UserService {
 			}
 
 			// 추천인 계층을 최대 3단계까지 찾기
-			parentIds = [referrerId, ...(await validHierarchy(referrerId))];
+			parentIds = [referrerId, ...(await validHierarchy(referrerId, this.userModel))];
 		}
 
 		// 비밀번호 해시
