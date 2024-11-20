@@ -5,7 +5,7 @@ import { Model } from 'mongoose';
 import { ERROR_MESSAGE_INVALID_ROLE, ERROR_MESSAGE_PERMISSION_DENIED } from 'src/common/constants/error-messages';
 import { Board } from '../board/schemas/board.schema';
 import { User } from '../user/schemas/user.schema';
-import { ClientNumberResDto } from './dto/res/client.number.res.dto';
+import { ClientStatResDto } from './dto/res/client.number.res.dto';
 import { NoticeResDto } from './dto/res/notice.res.dto';
 
 @Injectable()
@@ -74,7 +74,7 @@ export class DashboardService {
 	}
 
 	// 하위 광고주 수 통계 조회
-	async getClientsStat(req: any): Promise<ClientNumberResDto> {
+	async getClientsStat(req: any): Promise<ClientStatResDto> {
 		const user = req.user;
 
 		if (!user || !user.userId || !user.role) {
@@ -91,7 +91,7 @@ export class DashboardService {
 		// 증가율 계산
 		const growthRate = this.calculateGrowthRate(currentMonthCount, previousMonthCount);
 
-		return new ClientNumberResDto({
+		return new ClientStatResDto({
 			clientsCount: currentMonthCount,
 			growthRate,
 		});

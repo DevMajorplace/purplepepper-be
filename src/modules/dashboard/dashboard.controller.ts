@@ -1,8 +1,8 @@
 import { Controller, Get, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { DashboardService } from './dashboard.service';
-import { ClientNumberResDto } from './dto/res/client.number.res.dto';
+import { ClientStatResDto } from './dto/res/client.number.res.dto';
 import { NoticeResDto } from './dto/res/notice.res.dto';
 
 @ApiTags('Dashboard')
@@ -14,13 +14,15 @@ export class DashboardController {
 
 	// 최신 공지사항 제목 조회
 	@Get('latest-notice')
+	@ApiResponse({ type: NoticeResDto })
 	async getLatestNoticeTitle(@Req() req: any): Promise<NoticeResDto> {
 		return this.dashboardService.getLatestNoticeTitle(req);
 	}
 
 	// 하위 광고주 수 조회
-	@Get('clients-count')
-	async getClientsCount(@Req() req: any): Promise<ClientNumberResDto> {
+	@Get('clients-stat')
+	@ApiResponse({ type: ClientStatResDto })
+	async getClientsCount(@Req() req: any): Promise<ClientStatResDto> {
 		return this.dashboardService.getClientsStat(req);
 	}
 }

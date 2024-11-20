@@ -1,4 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
+import { Model } from 'mongoose';
+import { User } from 'src/modules/user/schemas/user.schema';
 import {
 	ERROR_MESSAGE_PASSWORD_POLICY,
 	ERROR_MESSAGE_USER_ID_MISSING,
@@ -32,13 +34,13 @@ export function validateUserId(userId: string): void {
 }
 
 // 상위 회원 3단계 유효성 검사 함수
-export async function validHierarchy(userId: string, maxDepth: number = 3): Promise<string[]> {
+export async function validHierarchy(userId: string, userModel: Model<User>, maxDepth: number = 3): Promise<string[]> {
 	const hierarchy: string[] = [];
 	let currentUserId = userId;
 
 	for (let i = 0; i < maxDepth; i++) {
 		// 상위 추천인 user_id를 찾기
-		const user = await this.userModel.findOne({ user_id: currentUserId }).exec();
+		const user = await userModel.findOne({ user_id: currentUserId }).exec();
 
 		// 현재 추천인이 존재하지 않거나 비활성화 상태이면 중단
 		if (!user || !user.parent_ids || user.parent_ids.length === 0 || !user.is_active) break;
@@ -47,7 +49,7 @@ export async function validHierarchy(userId: string, maxDepth: number = 3): Prom
 		const nextUserId = user.parent_ids[0];
 
 		// 유효한 추천인 user_id 중 is_active가 true인 경우에만 추가
-		const nextUser = await this.userModel.findOne({ user_id: nextUserId, is_active: true }).exec();
+		const nextUser = await userModel.findOne({ user_id: nextUserId, is_active: true }).exec();
 		if (!nextUser) break; // 다음 상위 추천인이 존재하지 않거나 비활성화 상태이면 중단
 
 		hierarchy.push(nextUserId);
