@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
+import { FindUserDataReqDto } from './dto/req/find.user.data.req.dto';
 import { LoginReqDto } from './dto/req/login.req.dto';
 import { SignUpReqDto } from './dto/req/signup.req.dto';
 import { UserDetailReqDto } from './dto/req/user.detail.req.dto';
@@ -69,5 +70,27 @@ export class UserController {
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async updateClientDetail(@Req() req: any, @Body() userDetailReqDto: UserDetailReqDto): Promise<UserDetailResDto> {
 		return this.userService.updateMyDetail(req, userDetailReqDto);
+	}
+
+	@Post('findUserId')
+	async findUserId(@Body() findUserDataReqDto: FindUserDataReqDto): Promise<{ userId: string }> {
+		return this.userService.findUserId(findUserDataReqDto);
+	}
+
+	@Post('findUserPassword')
+	async findUserPassword(@Res() res: Response, @Body() findUserDataReqDto: FindUserDataReqDto) {
+		// 성공 시 해당 사용자 데이터에 임시 접근 가능한 token을 발급해서 처리?
+		const { resetToken } = await this.userService.findUserPassword(findUserDataReqDto);
+		res.cookie('reset_token', resetToken, { httpOnly: true });
+		return res.json({ resetToken: resetToken });
+	}
+
+	@Patch('updateUserPassword')
+	@ApiBearerAuth('access-token')
+	async updateUserPassword(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body) {
+		const { password } = body;
+		const resetStatus = await this.userService.resetUserPassword(req, password);
+		res.clearCookie('reset_token');
+		return resetStatus;
 	}
 }

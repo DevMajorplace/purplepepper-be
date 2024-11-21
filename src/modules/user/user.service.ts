@@ -18,12 +18,14 @@ import {
 	ERROR_MESSAGE_INVALID_TOKEN,
 	ERROR_MESSAGE_NO_TOKEN,
 	ERROR_MESSAGE_PARENT_NOT_FOUND,
+	ERROR_MESSAGE_PERMISSION_DENIED,
 	ERROR_MESSAGE_STATUS_DECLINED,
 	ERROR_MESSAGE_STATUS_PENDING,
 	ERROR_MESSAGE_USER_LOGIN_FAILED,
 	ERROR_MESSAGE_USER_NOT_FOUND,
 } from '../../common/constants/error-messages';
 import { AuthService } from '../auth/auth.service';
+import { FindUserDataReqDto } from './dto/req/find.user.data.req.dto';
 import { LoginReqDto } from './dto/req/login.req.dto';
 import { SignUpReqDto } from './dto/req/signup.req.dto';
 import { UserDetailReqDto } from './dto/req/user.detail.req.dto';
@@ -137,13 +139,13 @@ export class UserService {
 			}
 
 			const payload = { userId: userId, role: existedUser.role };
-			const accessToken = this.authService.createAccessToken(payload);
+			const accessToken = this.authService.createToken(payload, 'access');
 
 			// 로그인 성공 시 로그 추가 및 실패 횟수 초기화
 			await this.loginLogModel.create(loginLog);
 			await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: 0 } });
 
-			const refreshToken = this.authService.createRefreshToken({ userId: userId });
+			const refreshToken = this.authService.createToken({ userId: userId }, 'refresh');
 
 			return { accessToken, refreshToken };
 		} catch (error) {
@@ -155,7 +157,7 @@ export class UserService {
 		const token = req.cookies?.refresh_token;
 		if (!token) throw new UnauthorizedException(ERROR_MESSAGE_NO_TOKEN);
 
-		const { userId } = this.authService.verifyRefreshToken(token);
+		const { userId } = this.authService.verifyToken(token, 'refresh');
 		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
 
 		const user = await this.userModel.findOne({ user_id: userId }).exec();
@@ -163,7 +165,7 @@ export class UserService {
 			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
 		}
 
-		return { accessToken: this.authService.createAccessToken({ userId: user.user_id, role: user.role }) };
+		return { accessToken: this.authService.createToken({ userId: user.user_id, role: user.role }, 'access') };
 	}
 
 	// 내 정보 확인
@@ -240,5 +242,54 @@ export class UserService {
 			.exec();
 
 		return new UserDetailResDto(updatedUser, role);
+	}
+
+	async findUserId(findUserDataReqDto: FindUserDataReqDto): Promise<{ userId: string }> {
+		const { manager_name, manager_contact } = findUserDataReqDto;
+		if (!manager_name || !manager_contact) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+
+		const user = await this.userModel.findOne({ manager_name: manager_name, manager_contact: manager_contact }).exec();
+		if (!user) throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+
+		return { userId: user.user_id };
+	}
+
+	async findUserPassword(findUserDataReqDto: FindUserDataReqDto): Promise<{ resetToken: string }> {
+		const { user_id, manager_name, manager_contact } = findUserDataReqDto;
+		if (!user_id || !manager_name || !manager_contact) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+
+		const user = await this.userModel.findOne({ manager_name: manager_name, manager_contact: manager_contact }).exec();
+		if (!user) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+
+		const payload = { userId: user.user_id, resetToken: true };
+		return { resetToken: this.authService.createToken(payload, 'reset') };
+	}
+
+	async resetUserPassword(@Req() req: Request, password: string): Promise<{ status: string }> {
+		validatePassword(password);
+		const token = req.cookies?.reset_token;
+		if (!token) throw new UnauthorizedException(ERROR_MESSAGE_NO_TOKEN);
+
+		const { userId, resetToken } = this.authService.verifyToken(token, 'reset');
+		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
+		if (!resetToken) throw new UnauthorizedException(ERROR_MESSAGE_PERMISSION_DENIED);
+
+		const user = await this.userModel.findOne({ user_id: userId }).exec();
+		if (!user) {
+			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
+		}
+
+		const hashedPassword = await bcrypt.hash(password, 10).catch(() => {
+			throw new InternalServerErrorException(ERROR_MESSAGE_HASH_FAILED);
+		});
+		await this.userModel.updateOne({ _id: user._id }, { $set: { password: hashedPassword } });
+
+		return { status: 'success' };
 	}
 }
