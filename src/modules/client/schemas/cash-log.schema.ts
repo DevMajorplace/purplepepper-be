@@ -8,7 +8,7 @@ export class CashLog extends Document {
 	user_idx: string; // 사용자 IDX
 
 	@Prop({ type: String, default: null })
-	advertise_idx?: string; // 상품 IDX
+	advertisement_idx?: string; // 상품 IDX
 
 	@Prop({ type: String, default: null })
 	mission_idx?: string; // 미션 IDX

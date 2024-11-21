@@ -19,7 +19,7 @@ import {
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
 import { CashLog } from '../client/schemas/cash-log.schema';
-import { CashLogStatus } from '../client/types/cash-log.enum';
+import { CashLogCategory, CashLogStatus } from '../client/types/cash-log.enum';
 import { LoginLog } from '../user/schemas/login-log.schema';
 import { User } from '../user/schemas/user.schema';
 import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
@@ -445,7 +445,7 @@ export class AdminService {
 				processed_at:
 					cashLog.status === CashLogStatus.APPROVED
 						? cashLog.approved_at
-						: ['REJECTED', 'ERROR'].includes(cashLog.status)
+						: [CashLogStatus.REJECTED, CashLogStatus.ERROR].includes(cashLog.status)
 							? cashLog.declined_at
 							: null, // 처리 시점 설정
 				rejection_reason: cashLog.rejection_reason || '', // 기본값 빈 문자열
@@ -491,19 +491,21 @@ export class AdminService {
 			);
 		}
 
-		// 업데이트 필드 정의
-		const updateFields: any = {
-			status: status as CashLogStatus,
-			approved_at: status === CashLogStatus.APPROVED ? new Date() : null,
-			declined_at: status === CashLogStatus.REJECTED ? new Date() : null,
-		};
+		// 승인/거절에 따라 업데이트 필드 분기 처리
+		const updateFields: any = {};
 
-		// 거절인 경우 거절 사유 추가
-		if (status === CashLogStatus.REJECTED) {
+		if (status === CashLogStatus.APPROVED) {
+			updateFields.status = CashLogStatus.APPROVED;
+			updateFields.category = CashLogCategory.DEPOSIT_CONFIRMED;
+			updateFields.approved_at = new Date(); // 승인 시 승인 날짜 설정
+		} else if (status === CashLogStatus.REJECTED) {
 			if (!rejection_reason) {
 				throw new BadRequestException(ERROR_MESSAGE_NO_REJECTION_REASON);
 			}
-			updateFields.rejection_reason = rejection_reason;
+			updateFields.status = CashLogStatus.REJECTED;
+			updateFields.category = CashLogCategory.CANCEL;
+			updateFields.declined_at = new Date(); // 거절 날짜 설정
+			updateFields.rejection_reason = rejection_reason; // 거절 사유 설정
 		}
 
 		// 업데이트 수행
@@ -515,6 +517,19 @@ export class AdminService {
 		if (logsToUpdate.length > 0) {
 			const logIdsToUpdate = logsToUpdate.map(cashLog => cashLog._id.toString());
 			await this.cashLogModel.updateMany({ _id: { $in: logIdsToUpdate } }, updateFields).exec();
+		}
+
+		// 승인이면 충전요청금액만큼 유저 cash 추가
+		if (status === CashLogStatus.APPROVED) {
+			await Promise.all(
+				logsToUpdate.map(async cashLog => {
+					const user = await this.userModel.findById(cashLog.user_idx).exec();
+					if (user) {
+						user.cash += cashLog.amount;
+						await user.save();
+					}
+				}),
+			);
 		}
 
 		// 업데이트 후 최신 상태 조회
