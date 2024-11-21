@@ -11,12 +11,12 @@ export class AuthService {
 	) {}
 
 	createToken(payload: any, type: 'access' | 'refresh' | 'reset'): string {
-		const jwtOptions = this.setSignJwtOptions(type);
+		const jwtOptions = this.setJwtOptions(type, 'sign');
 		return this.jwtService.sign(payload, jwtOptions);
 	}
 
 	verifyToken(token: string, type: 'access' | 'refresh' | 'reset'): any {
-		const jwtOptions = this.setVerifyJwtOptions(type);
+		const jwtOptions = this.setJwtOptions(type, 'verify');
 		try {
 			const verify = this.jwtService.verify(token, jwtOptions);
 			return verify;
@@ -32,38 +32,29 @@ export class AuthService {
 		}
 	}
 
-	private setSignJwtOptions(type: 'access' | 'refresh' | 'reset'): { secret: string; expiresIn: string } {
-		const jwtOptions = { secret: '', expiresIn: '' };
+	private setJwtOptions(
+		type: 'access' | 'refresh' | 'reset',
+		options: 'sign' | 'verify',
+	): { secret: string; expiresIn?: string } {
+		const jwtOptions = this.initJwtOptionType(options);
 		switch (type) {
 			case 'access':
 				jwtOptions.secret = this.configService.get<string>('JWT_ACCESS_TOKEN');
-				jwtOptions.expiresIn = this.configService.get<string>('JWT_ACCESS_EXPIRED_TIME');
+				if (options === 'sign') jwtOptions.expiresIn = this.configService.get<string>('JWT_ACCESS_EXPIRED_TIME');
 				break;
 			case 'refresh':
 				jwtOptions.secret = this.configService.get<string>('JWT_REFRESH_TOKEN');
-				jwtOptions.expiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRED_TIME');
+				if (options === 'sign') jwtOptions.expiresIn = this.configService.get<string>('JWT_REFRESH_EXPIRED_TIME');
 				break;
 			case 'reset':
 				jwtOptions.secret = this.configService.get<string>('JWT_RESET_TOKEN');
-				jwtOptions.expiresIn = this.configService.get<string>('JWT_RESET_EXPIRED_TIME');
+				if (options === 'sign') jwtOptions.expiresIn = this.configService.get<string>('JWT_RESET_EXPIRED_TIME');
 				break;
 		}
 		return jwtOptions;
 	}
 
-	private setVerifyJwtOptions(type: 'access' | 'refresh' | 'reset'): { secret: string } {
-		const jwtOptions = { secret: '' };
-		switch (type) {
-			case 'access':
-				jwtOptions.secret = this.configService.get<string>('JWT_ACCESS_TOKEN');
-				break;
-			case 'refresh':
-				jwtOptions.secret = this.configService.get<string>('JWT_REFRESH_TOKEN');
-				break;
-			case 'reset':
-				jwtOptions.secret = this.configService.get<string>('JWT_RESET_TOKEN');
-				break;
-		}
-		return jwtOptions;
+	private initJwtOptionType(options: 'sign' | 'verify'): { secret: string; expiresIn?: string } {
+		return options === 'sign' ? { secret: '', expiresIn: '' } : { secret: '' };
 	}
 }
