@@ -11,10 +11,10 @@ import { BoardDetailResDto } from './dto/res/board.detail.res.dto';
 import { BoardListResDto } from './dto/res/board.list.res.dto';
 import { Board } from './schemas/board.schema';
 
+@Controller('boards')
 @ApiTags('Boards')
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, RoleGuard)
-@Controller('boards')
 export class BoardController {
 	constructor(private readonly boardService: BoardService) {}
 
