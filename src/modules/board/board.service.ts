@@ -30,6 +30,7 @@ export class BoardService {
 					id: board.id,
 					category: board.category,
 					title: board.title,
+					visible: board.visible,
 					created_at: board.created_at,
 				}),
 		);
