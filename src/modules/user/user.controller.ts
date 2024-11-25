@@ -9,6 +9,7 @@ import { SignUpReqDto } from './dto/req/signup.req.dto';
 import { UserDetailReqDto } from './dto/req/user.detail.req.dto';
 import { SignUpResDto } from './dto/res/signup.res.dto';
 import { UserDetailResDto } from './dto/res/user.detail.res.dto';
+import { UserLoginResDto } from './dto/res/user.login.res.dto';
 import { UserService } from './user.service';
 
 @ApiTags('User')
@@ -26,13 +27,24 @@ export class UserController {
 
 	// 로그인
 	@Post('login')
-	@ApiResponse({ type: SignUpResDto })
+	@ApiResponse({ type: UserLoginResDto })
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async login(@Body() user: LoginReqDto, @Req() req: any, @Res() res: Response) {
-		const { accessToken, refreshToken } = await this.userService.login(user, req);
-		res.cookie('access_token', accessToken);
-		res.cookie('refresh_token', refreshToken);
-		return res.json({ accessToken, refreshToken });
+		const { company_name, user_id, manager_name, cash, point, role, token } = await this.userService.login(user, req);
+		res.cookie('access_token', token.accessToken);
+		res.cookie('refresh_token', token.refreshToken);
+		return res.json({
+			company_name,
+			user_id,
+			manager_name,
+			cash,
+			point,
+			role,
+			token: {
+				accessToken: token.accessToken,
+				refreshToken: token.refreshToken,
+			},
+		});
 	}
 
 	@Post('logout')
@@ -81,7 +93,7 @@ export class UserController {
 	async findUserPassword(@Res() res: Response, @Body() findUserDataReqDto: FindUserDataReqDto) {
 		// 성공 시 해당 사용자 데이터에 임시 접근 가능한 token을 발급해서 처리?
 		const { resetToken } = await this.userService.findUserPassword(findUserDataReqDto);
-		res.cookie('reset_token', resetToken, { httpOnly: true });
+		res.cookie('reset_token', resetToken);
 		return res.json({ resetToken: resetToken });
 	}
 

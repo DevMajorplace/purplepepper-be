@@ -31,6 +31,7 @@ import { SignUpReqDto } from './dto/req/signup.req.dto';
 import { UserDetailReqDto } from './dto/req/user.detail.req.dto';
 import { SignUpResDto } from './dto/res/signup.res.dto';
 import { UserDetailResDto } from './dto/res/user.detail.res.dto';
+import { UserLoginResDto } from './dto/res/user.login.res.dto';
 import { LoginLog } from './schemas/login-log.schema';
 import { User } from './schemas/user.schema';
 
@@ -97,7 +98,7 @@ export class UserService {
 	}
 
 	// 로그인
-	async login(user: LoginReqDto, @Req() req: any): Promise<{ accessToken: string; refreshToken: string }> {
+	async login(user: LoginReqDto, @Req() req: any): Promise<UserLoginResDto> {
 		const userId = user.user_id;
 		const password = user.password;
 
@@ -147,7 +148,15 @@ export class UserService {
 
 			const refreshToken = this.authService.createToken({ userId: userId }, 'refresh');
 
-			return { accessToken, refreshToken };
+			return {
+				company_name: existedUser.company_name,
+				user_id: existedUser.user_id,
+				manager_name: existedUser.manager_name,
+				cash: existedUser.cash,
+				point: existedUser.point,
+				role: existedUser.role,
+				token: { accessToken, refreshToken },
+			};
 		} catch (error) {
 			throw error;
 		}
