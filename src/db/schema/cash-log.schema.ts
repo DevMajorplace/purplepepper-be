@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { CashLogCategory, CashLogStatus, CashLogType } from '../types/cash-log.enum';
+import { CashLogCategory, CashLogStatus, CashLogType } from '../../modules/client/types/cash-log.enum';
 
 @Schema({ timestamps: { createdAt: 'created_at' } })
 export class CashLog extends Document {

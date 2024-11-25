@@ -16,12 +16,12 @@ import {
 	ERROR_MESSAGE_USER_NOT_FOUND,
 	ERROR_MESSAGE_USERS_NOT_FOUND,
 } from '../../common/constants/error-messages';
+import { CashLog } from '../../db/schema/cash-log.schema';
+import { LoginLog } from '../../db/schema/login-log.schema';
+import { User } from '../../db/schema/user.schema';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
-import { CashLog } from '../client/schemas/cash-log.schema';
 import { CashLogCategory, CashLogStatus } from '../client/types/cash-log.enum';
-import { LoginLog } from '../user/schemas/login-log.schema';
-import { User } from '../user/schemas/user.schema';
 import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
 import { AgencyListReqDto } from './dto/req/agency.list.req.dto';
 import { CashRequestListReqDto } from './dto/req/cash.request.list.req.dto';

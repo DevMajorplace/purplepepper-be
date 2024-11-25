@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Model } from 'mongoose';
-import { User } from 'src/modules/user/schemas/user.schema';
+import { User } from 'src/db/schema/user.schema';
 import {
 	ERROR_MESSAGE_PASSWORD_POLICY,
 	ERROR_MESSAGE_USER_ID_MISSING,

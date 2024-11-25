@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { Board, BoardSchema } from '../../db/schema/board.schema';
 import { AuthModule } from '../auth/auth.module';
-import { Board, BoardSchema } from '../board/schemas/board.schema';
 import { UserModule } from '../user/user.module';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';

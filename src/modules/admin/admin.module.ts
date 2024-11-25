@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { CashLog, CashLogSchema } from '../../db/schema/cash-log.schema';
+import { LoginLog, LoginLogSchema } from '../../db/schema/login-log.schema';
+import { User, UserSchema } from '../../db/schema/user.schema';
 import { AuthModule } from '../auth/auth.module';
-import { CashLog, CashLogSchema } from '../client/schemas/cash-log.schema';
-import { LoginLog, LoginLogSchema } from '../user/schemas/login-log.schema';
-import { User, UserSchema } from '../user/schemas/user.schema';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 

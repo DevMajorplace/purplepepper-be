@@ -24,6 +24,8 @@ import {
 	ERROR_MESSAGE_USER_LOGIN_FAILED,
 	ERROR_MESSAGE_USER_NOT_FOUND,
 } from '../../common/constants/error-messages';
+import { LoginLog } from '../../db/schema/login-log.schema';
+import { User } from '../../db/schema/user.schema';
 import { AuthService } from '../auth/auth.service';
 import { FindUserDataReqDto } from './dto/req/find.user.data.req.dto';
 import { LoginReqDto } from './dto/req/login.req.dto';
@@ -31,8 +33,6 @@ import { SignUpReqDto } from './dto/req/signup.req.dto';
 import { UserDetailReqDto } from './dto/req/user.detail.req.dto';
 import { SignUpResDto } from './dto/res/signup.res.dto';
 import { UserDetailResDto } from './dto/res/user.detail.res.dto';
-import { LoginLog } from './schemas/login-log.schema';
-import { User } from './schemas/user.schema';
 
 @Injectable()
 export class UserService {
