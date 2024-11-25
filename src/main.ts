@@ -24,8 +24,8 @@ async function bootstrap() {
 
 	// CORS 설정
 	app.enableCors({
-		origin: '*', // 프론트엔드 URL
-		methods: configService.get('FRONT_END_URL'),
+		origin: configService.get('FRONT_END_URL'), // 프론트엔드 URL
+		methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
 		credentials: true, // 쿠키 및 인증 정보 허용
 	});
 
@@ -39,21 +39,15 @@ async function bootstrap() {
 			resave: false,
 			saveUninitialized: false,
 			cookie: {
+				domain: 'majorinstareference.com',
 				sameSite: 'none',
+				path: '/',
 				secure: true,
-				httpOnly: true, // 클라이언트 스크립트 접근 불가
+				httpOnly: false, // 클라이언트 스크립트 접근 불가
 				maxAge: 1000 * 60 * 60 * 24, // 1일
 			},
 		}),
 	);
-
-	// CORS 헤더 수동 추가 (세션 이후에도 헤더가 유지되도록)
-	app.use((req, res, next) => {
-		res.header('Access-Control-Allow-Origin', configService.get('FRONT_END_URL')); // HTTPS 추가
-		res.header('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS');
-		res.header('Access-Control-Allow-Credentials', 'true');
-		next();
-	});
 
 	// Swagger Basic Auth 설정
 	app.use(

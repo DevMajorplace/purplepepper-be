@@ -30,8 +30,8 @@ export class UserController {
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async login(@Body() user: LoginReqDto, @Req() req: any, @Res() res: Response) {
 		const { accessToken, refreshToken } = await this.userService.login(user, req);
-		res.cookie('access_token', accessToken, { httpOnly: true });
-		res.cookie('refresh_token', refreshToken, { httpOnly: true });
+		res.cookie('access_token', accessToken);
+		res.cookie('refresh_token', refreshToken);
 		return res.json({ accessToken, refreshToken });
 	}
 
@@ -49,7 +49,7 @@ export class UserController {
 	@Get('refresh')
 	async tokenRefresh(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<{ accessToken: string }> {
 		const { accessToken } = await this.userService.tokenRefresh(req);
-		res.cookie('access_token', accessToken, { httpOnly: true });
+		res.cookie('access_token', accessToken);
 		return { accessToken: accessToken };
 	}
 
