@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDate, IsNotEmpty, IsString } from 'class-validator';
+import { IsArray, IsDate, IsNotEmpty, IsString } from 'class-validator';
+import { Role } from 'src/modules/auth/types/role.enum';
 
 export class BoardItemDto {
 	@IsString()
@@ -12,18 +13,16 @@ export class BoardItemDto {
 	@IsNotEmpty()
 	@ApiProperty({ description: '카테고리' })
 	public readonly category: string;
+
 	@IsString()
 	@IsNotEmpty()
 	@ApiProperty({ description: '제목' })
 	public readonly title: string;
 
-	@IsString()
-	@ApiProperty({ description: '내용' })
-	public readonly content: string;
-
-	@IsString()
-	@ApiProperty({ description: '첨부파일 url' })
-	public readonly file_urls: string[];
+	@IsArray()
+	@IsNotEmpty()
+	@ApiProperty({ description: '공개 범위 - admin, agency, client' })
+	public readonly visible: Role[];
 
 	@IsDate()
 	@Type(() => Date)
