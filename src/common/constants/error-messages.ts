@@ -25,10 +25,15 @@ export const ERROR_MESSAGE_USERS_NOT_FOUND = (ids: string) => `다음 사용자 
 export const ERROR_MESSAGE_USER_ID_MISSING = '사용자 ID를 입력해주세요.';
 export const ERROR_MESSAGE_CASH_LOG_ID_MISSING = '캐시 로그 ID가 제공되지 않았습니다.';
 export const ERROR_MESSAGE_CASH_LOGS_NOT_FOUND = (ids: string) => `다음 캐시로그 ID를 찾을 수 없습니다: ${ids}`;
+export const ERROR_MESSAGE_NO_CASH_LOG_USSER = (ids: string) => `캐시 로그가 없는 유저입니다. ${ids}`;
 export const ERROR_MESSAGE_NO_REJECTION_REASON = '거절 사유를 입력해주세요.';
-export const ERROR_MESSAGE_INVALID_STATUS_LOGS = (invalidLogIds: string): string =>
-	`다음 캐시 로그는 대기 상태가 아니므로 승인/거절을 수행할 수 없습니다: ${invalidLogIds}`;
+export const ERROR_MESSAGE_INVALID_STATUS_LOGS = (status: string): string =>
+	`다음 캐시 로그는 대기 상태가 아니므로 승인/거절을 수행할 수 없습니다: ${status}`;
 export const ERROR_MESSAGE_INVALID_TARGET_SALES = '유효하지 않은 금액입니다.';
+export const ERROR_MESSAGE_ALREADY_IN_STATUS = (status: string): string => `이미 ${status} 상태입니다.`;
 
 // Client
 export const ERROR_MESSAGE_INVALID_AMOUNT = '충전 금액은 5만 캐시부터 1000만 캐시까지 가능합니다.';
+
+// Server Error
+export const ERROR_MESSAGE_FAILED_UPDATE = (message: string): string => `${message} 이유로 업데이트 실패했습니다.`;

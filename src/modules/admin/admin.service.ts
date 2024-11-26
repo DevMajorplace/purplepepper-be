@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import * as moment from 'moment-timezone';
@@ -7,16 +7,18 @@ import { setApprovedDateQuery, setBaseQuery } from 'src/common/utils/filter.util
 import { paginate, PaginationResult } from 'src/common/utils/pagination.util';
 import { isNotEmptyUserId, validatePassword, validHierarchy } from 'src/common/utils/validation.util';
 import {
+	ERROR_MESSAGE_ALREADY_IN_STATUS,
 	ERROR_MESSAGE_CASH_LOG_ID_MISSING,
 	ERROR_MESSAGE_CASH_LOGS_NOT_FOUND,
+	ERROR_MESSAGE_FAILED_UPDATE,
 	ERROR_MESSAGE_INVALID_ROLE,
 	ERROR_MESSAGE_INVALID_STATUS_LOGS,
 	ERROR_MESSAGE_INVALID_TARGET_SALES,
+	ERROR_MESSAGE_NO_CASH_LOG_USSER,
 	ERROR_MESSAGE_NO_REJECTION_REASON,
 	ERROR_MESSAGE_NO_USER_IDS,
 	ERROR_MESSAGE_PARENT_NOT_FOUND,
 	ERROR_MESSAGE_USER_NOT_FOUND,
-	ERROR_MESSAGE_USERS_NOT_FOUND,
 } from '../../common/constants/error-messages';
 import { CashLog } from '../../db/schema/cash-log.schema';
 import { LoginLog } from '../../db/schema/login-log.schema';
@@ -35,7 +37,9 @@ import { AgencyListResDto } from './dto/res/agency.list.res.dto';
 import { CashRequestListResDto } from './dto/res/cash.request.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
+import { FailedUserDto } from './dto/res/failed.user.res.dto';
 import { TargetSalesResDto } from './dto/res/target.sales.res.dto';
+import { UsersUpdateResultResDto } from './dto/res/user.update.result.res.dto';
 
 @Injectable()
 export class AdminService {
@@ -190,48 +194,53 @@ export class AdminService {
 	}
 
 	// 가입 상태 업데이트(단일, 다중 사용자 승인 거절)
-	async updateUserStatus(
-		userIds: string[],
-		status: 'approved' | 'declined',
-	): Promise<{ updatedUsers: UserStatusUpdateResDto[]; missingUserIds: string[] }> {
-		// userIds가 단일 문자열인 경우 배열로 변환
+	async updateUserStatus(userIds: string[], status: 'approved' | 'declined'): Promise<UsersUpdateResultResDto> {
+		// 입력된 userIds가 단일 문자열일 경우 배열로 변환
 		const idsArray = typeof userIds === 'string' ? [userIds] : userIds;
 
-		// userId가 들어오지 않은 경우 예외 발생
 		if (idsArray.length === 0) {
 			throw new BadRequestException(ERROR_MESSAGE_NO_USER_IDS);
 		}
+		const failed: FailedUserDto[] = []; // 실패한 사용자 목록 저장
+		let updatedUsers: UserStatusUpdateResDto[] = []; // 성공적으로 업데이트된 사용자 목록
 
-		// 존재하는 사용자 조회 및 누락된 ID 확인
-		const users = await this.userModel.find({ user_id: { $in: idsArray } }).exec();
-		const foundUserIds = users.map(user => user.user_id);
-		const missingUserIds = idsArray.filter(id => !foundUserIds.includes(id));
+		try {
+			const users = await this.userModel.find({ user_id: { $in: idsArray } }).exec();
+			const foundUserIds = users.map(user => user.user_id);
+			const missingUserIds = idsArray.filter(id => !foundUserIds.includes(id));
 
-		if (missingUserIds.length > 0) {
-			throw new NotFoundException(ERROR_MESSAGE_USERS_NOT_FOUND(missingUserIds.join(', ')));
+			missingUserIds.forEach(id => {
+				failed.push(new FailedUserDto(id, ERROR_MESSAGE_USER_NOT_FOUND));
+			});
+
+			const usersToUpdate = users.filter(user => user.status !== status); // 상태 다른 업데이트 될 사용자
+			const alreadyUpdatedUsers = users.filter(user => user.status === status); // 상태 같은 이미 업데이트 된 사용자
+
+			//이미 동일한 상태인 사용자 실패 목록에 추가
+			alreadyUpdatedUsers.forEach(user => {
+				failed.push(new FailedUserDto(user.user_id, ERROR_MESSAGE_ALREADY_IN_STATUS(status)));
+			});
+
+			const updateFields = {
+				status,
+				approved_at: status === 'approved' ? new Date() : null,
+				declined_at: status === 'declined' ? new Date() : null,
+			};
+			if (usersToUpdate.length > 0) {
+				const userIdsToUpdate = usersToUpdate.map(user => user.user_id);
+				await this.userModel.updateMany({ user_id: { $in: userIdsToUpdate } }, updateFields).exec();
+			}
+
+			updatedUsers = await this.userModel
+				.find({ user_id: { $in: usersToUpdate.map(user => user.user_id) } })
+				.exec()
+				.then(
+					users => users.map(user => new UserStatusUpdateResDto(user)), // DTO로 변환
+				);
+		} catch (error) {
+			throw new InternalServerErrorException(ERROR_MESSAGE_FAILED_UPDATE);
 		}
-
-		// 이미 요청한 상태와 동일한 경우 업데이트 생략
-		const usersToUpdate = users.filter(user => user.status !== status);
-		const updateFields = {
-			status,
-			approved_at: status === 'approved' ? new Date() : null,
-			declined_at: status === 'declined' ? new Date() : null,
-		};
-
-		// 업데이트할 사용자가 있는 경우에만 상태 업데이트
-		if (usersToUpdate.length > 0) {
-			const userIdsToUpdate = usersToUpdate.map(user => user.user_id);
-			await this.userModel.updateMany({ user_id: { $in: userIdsToUpdate } }, updateFields).exec();
-		}
-
-		// 업데이트 후 최신 사용자 상태 다시 조회
-		const updatedUsers = await this.userModel.find({ user_id: { $in: foundUserIds } }).exec();
-
-		return {
-			updatedUsers: updatedUsers.map(user => new UserStatusUpdateResDto(user)),
-			missingUserIds,
-		};
+		return new UsersUpdateResultResDto(updatedUsers, failed);
 	}
 
 	// 가입된 광고주 조건/전체 조회
@@ -469,7 +478,7 @@ export class AdminService {
 	// 광고주 캐시 충전 요청 승인/거절
 	async updateChargeRequest(
 		cashRequestListReqDto: CashRequestListReqDto & { status: CashLogStatus; rejection_reason?: string },
-	): Promise<{ updatedCashLogs: CashRequestListResDto[]; missingCashLogIds: string[] }> {
+	): Promise<{ success: CashRequestListResDto[]; failed: { cashLogIdx: string; reason: string }[] }> {
 		const { cashLogIdx, status, rejection_reason } = cashRequestListReqDto;
 
 		// 요청된 ID가 없으면 예외 처리
@@ -477,71 +486,99 @@ export class AdminService {
 			throw new BadRequestException(ERROR_MESSAGE_CASH_LOG_ID_MISSING);
 		}
 
-		// 존재하는 캐시 로그 조회
-		const cashLogs = await this.cashLogModel.find({ _id: { $in: cashLogIdx } }).exec();
-		const foundIds = cashLogs.map(cashLog => cashLog._id.toString());
-		const missingCashLogIds = cashLogIdx.filter(id => !foundIds.includes(id));
+		// 결과를 저장할 배열
+		const success: CashRequestListResDto[] = [];
+		const failed: { cashLogIdx: string; reason: string }[] = [];
 
-		// 누락된 ID가 있는 경우 경고 메시지 출력
-		if (missingCashLogIds.length > 0) {
-			throw new BadRequestException(ERROR_MESSAGE_CASH_LOGS_NOT_FOUND(missingCashLogIds.join(', ')));
-		}
+		try {
+			// 존재하는 캐시 로그 조회
+			const cashLogs = await this.cashLogModel.find({ _id: { $in: cashLogIdx } }).exec();
+			const foundIds = cashLogs.map(cashLog => cashLog._id.toString());
+			const missingCashLogIds = cashLogIdx.filter(id => !foundIds.includes(id));
 
-		// 대기 상태가 아닌 로그 필터링
-		const invalidLogs = cashLogs.filter(cashLog => cashLog.status !== CashLogStatus.PENDING);
-		if (invalidLogs.length > 0) {
-			throw new BadRequestException(
-				ERROR_MESSAGE_INVALID_STATUS_LOGS(invalidLogs.map(log => log._id.toString()).join(', ')),
-			);
-		}
+			// 누락된 ID 실패 처리
+			missingCashLogIds.forEach(id => {
+				failed.push({ cashLogIdx: id, reason: ERROR_MESSAGE_CASH_LOGS_NOT_FOUND(id) });
+			});
 
-		// 승인/거절에 따라 업데이트 필드 분기 처리
-		const updateFields: any = {};
+			// 대기 상태가 아닌 로그 실패 처리
+			const invalidLogs = cashLogs.filter(cashLog => cashLog.status !== CashLogStatus.PENDING);
+			invalidLogs.forEach(log => {
+				failed.push({
+					cashLogIdx: log._id.toString(),
+					reason: ERROR_MESSAGE_INVALID_STATUS_LOGS(log.status),
+				});
+			});
 
-		if (status === CashLogStatus.APPROVED) {
-			updateFields.status = CashLogStatus.APPROVED;
-			updateFields.category = CashLogCategory.DEPOSIT_CONFIRMED;
-			updateFields.approved_at = new Date(); // 승인 시 승인 날짜 설정
-		} else if (status === CashLogStatus.REJECTED) {
-			if (!rejection_reason) {
-				throw new BadRequestException(ERROR_MESSAGE_NO_REJECTION_REASON);
+			// 승인/거절에 따라 업데이트 필드 분기 처리
+			const updateFields: any = {};
+
+			if (status === CashLogStatus.APPROVED) {
+				updateFields.status = CashLogStatus.APPROVED;
+				updateFields.category = CashLogCategory.DEPOSIT_CONFIRMED;
+				updateFields.approved_at = new Date(); // 승인 날짜 설정
+			} else if (status === CashLogStatus.REJECTED) {
+				if (!rejection_reason) {
+					throw new BadRequestException(ERROR_MESSAGE_NO_REJECTION_REASON);
+				}
+				updateFields.status = CashLogStatus.REJECTED;
+				updateFields.category = CashLogCategory.CANCEL;
+				updateFields.declined_at = new Date(); // 거절 날짜 설정
+				updateFields.rejection_reason = rejection_reason; // 거절 사유 설정
 			}
-			updateFields.status = CashLogStatus.REJECTED;
-			updateFields.category = CashLogCategory.CANCEL;
-			updateFields.declined_at = new Date(); // 거절 날짜 설정
-			updateFields.rejection_reason = rejection_reason; // 거절 사유 설정
-		}
 
-		// 업데이트 수행
-		const logsToUpdate = cashLogs.filter(
-			cashLog =>
-				cashLog.status === CashLogStatus.PENDING && // 대기 상태일 때만 승인/거절 가능
-				cashLog.status !== status, // 이미 요청된 상태와 동일하지 않은 경우만
-		);
-		if (logsToUpdate.length > 0) {
-			const logIdsToUpdate = logsToUpdate.map(cashLog => cashLog._id.toString());
-			await this.cashLogModel.updateMany({ _id: { $in: logIdsToUpdate } }, updateFields).exec();
-		}
-
-		// 승인이면 충전요청금액만큼 유저 cash 추가
-		if (status === CashLogStatus.APPROVED) {
-			await Promise.all(
-				logsToUpdate.map(async cashLog => {
-					const user = await this.userModel.findById(cashLog.user_idx).exec();
-					if (user) {
-						user.cash += cashLog.amount;
-						await user.save();
-					}
-				}),
+			// 업데이트할 로그 필터링
+			const logsToUpdate = cashLogs.filter(
+				cashLog =>
+					cashLog.status === CashLogStatus.PENDING && // 대기 상태일 때만 승인/거절 가능
+					cashLog.status !== status, // 이미 요청된 상태와 동일하지 않은 경우만
 			);
+
+			if (logsToUpdate.length > 0) {
+				const logIdsToUpdate = logsToUpdate.map(cashLog => cashLog._id.toString());
+				await this.cashLogModel.updateMany({ _id: { $in: logIdsToUpdate } }, updateFields).exec();
+			}
+
+			// 승인이면 충전 요청 금액만큼 유저 cash 추가
+			if (status === CashLogStatus.APPROVED) {
+				await Promise.all(
+					logsToUpdate.map(async cashLog => {
+						try {
+							const user = await this.userModel.findById(cashLog.user_idx).exec();
+							if (user) {
+								user.cash += cashLog.amount;
+								await user.save();
+							} else {
+								failed.push({
+									cashLogIdx: cashLog._id.toString(),
+									reason: ERROR_MESSAGE_NO_CASH_LOG_USSER(cashLog.user_idx),
+								});
+							}
+						} catch (error) {
+							failed.push({
+								cashLogIdx: cashLog._id.toString(),
+								reason: ERROR_MESSAGE_FAILED_UPDATE(error.message),
+							});
+						}
+					}),
+				);
+			}
+
+			// 업데이트 후 최신 상태 조회
+			const updatedCashLogs = await this.cashLogModel
+				.find({ _id: { $in: logsToUpdate.map(log => log._id.toString()) } })
+				.exec();
+
+			// 성공한 로그 추가
+			updatedCashLogs.forEach(cashLog => {
+				success.push(new CashRequestListResDto(cashLog));
+			});
+		} catch (error) {
+			throw new InternalServerErrorException(ERROR_MESSAGE_FAILED_UPDATE);
 		}
-
-		// 업데이트 후 최신 상태 조회
-		const updatedCashLogs = await this.cashLogModel.find({ _id: { $in: foundIds } }).exec();
-
 		return {
-			updatedCashLogs: updatedCashLogs.map(cashLog => new CashRequestListResDto(cashLog)),
-			missingCashLogIds,
+			success,
+			failed,
 		};
 	}
 
@@ -603,7 +640,7 @@ export class AdminService {
 				// 업데이트 중 에러 발생 시 실패 이유 추가
 				failed.push({
 					user_id,
-					reason: `Failed to update target sales due to: ${error.message}`,
+					reason: ERROR_MESSAGE_FAILED_UPDATE(error.message),
 				});
 			}
 		}

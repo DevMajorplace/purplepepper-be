@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiExtraModels, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
 import { Board } from '../../db/schema/board.schema';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
@@ -9,7 +9,7 @@ import { BoardService } from './board.service';
 import { BoardListReqDto } from './dto/req/board.list.req.dto';
 import { BoardReqDto } from './dto/req/board.req.dto';
 import { BoardDetailResDto } from './dto/res/board.detail.res.dto';
-import { BoardListResDto } from './dto/res/board.list.res.dto';
+import { BoardItemDto } from './dto/res/board.item.dto';
 
 @Controller('boards')
 @ApiTags('Boards')
@@ -19,14 +19,35 @@ export class BoardController {
 	constructor(private readonly boardService: BoardService) {}
 
 	@Get()
+	@ApiExtraModels(BoardItemDto)
 	@UserRoles(Role.Admin, Role.Agency, Role.Client)
-	@ApiResponse({ type: BoardListResDto })
+	@ApiResponse({
+		schema: {
+			type: 'object',
+			properties: {
+				data: {
+					type: 'array',
+					items: { $ref: getSchemaPath(BoardItemDto) },
+				},
+				totalItems: { type: 'number' },
+				totalPages: { type: 'number' },
+				currentPage: { type: 'number' },
+				pageSize: { type: 'number' },
+			},
+		},
+	})
 	async getBoardsList(
 		@Query('page') page: number,
 		@Query('pageSize') pageSize: number,
 		@Query() boardsListReqDto: BoardListReqDto,
 		@Req() req: Request,
-	): Promise<BoardListResDto> {
+	): Promise<{
+		data: BoardItemDto[];
+		totalItems: number;
+		totalPages: number;
+		currentPage: number;
+		pageSize: number;
+	}> {
 		const { category, title } = boardsListReqDto;
 		return this.boardService.getAllBoards(page, pageSize, category, title, req);
 	}

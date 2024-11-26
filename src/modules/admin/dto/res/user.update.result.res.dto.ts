@@ -1,15 +1,16 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { FailedUserDto } from './failed.user.res.dto';
 import { UserStatusUpdateResDto } from './user.status.update.res.dto';
 
 export class UsersUpdateResultResDto {
 	@ApiProperty({ type: [UserStatusUpdateResDto], description: '업데이트된 사용자 목록' })
-	public readonly updatedUsers: UserStatusUpdateResDto[];
+	public readonly success: UserStatusUpdateResDto[];
 
-	@ApiProperty({ type: [String], description: '존재하지 않는 사용자 ID 목록' })
-	public readonly missingUserIds: string[];
+	@ApiProperty({ type: [FailedUserDto], description: '업데이트 실패한 사용자 목록' })
+	public readonly failed: FailedUserDto[];
 
-	constructor(updatedUsers: UserStatusUpdateResDto[], missingUserIds: string[]) {
-		this.updatedUsers = updatedUsers;
-		this.missingUserIds = missingUserIds;
+	constructor(success: UserStatusUpdateResDto[], failed: FailedUserDto[]) {
+		this.success = success;
+		this.failed = failed;
 	}
 }
