@@ -149,15 +149,16 @@ export class UserService {
 
 			const refreshToken = this.authService.createToken({ userId: userId }, 'refresh');
 
-			return {
+			return new UserLoginResDto({
 				company_name: existedUser.company_name,
 				user_id: existedUser.user_id,
 				manager_name: existedUser.manager_name,
 				cash: existedUser.cash,
 				point: existedUser.point,
 				role: existedUser.role,
+				is_register_account: existedUser.account_number !== undefined,
 				token: { accessToken, refreshToken },
-			};
+			});
 		} catch (error) {
 			throw error;
 		}

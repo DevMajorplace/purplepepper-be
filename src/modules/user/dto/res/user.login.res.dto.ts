@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsObject, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsNumber, IsObject, IsString } from 'class-validator';
 
 export class UserLoginResDto {
 	@IsString()
@@ -32,6 +32,11 @@ export class UserLoginResDto {
 	@ApiProperty({ description: '역할' })
 	role: string;
 
+	@IsBoolean()
+	@IsNotEmpty()
+	@ApiProperty({ description: '계좌 입력 여부' })
+	is_register_account: boolean;
+
 	@IsObject()
 	@IsNotEmpty()
 	@ApiProperty({ description: '토큰 정보' })
@@ -39,4 +44,15 @@ export class UserLoginResDto {
 		accessToken: string;
 		refreshToken: string;
 	};
+
+	constructor(user: any) {
+		this.company_name = user.company_name;
+		this.user_id = user.user_id;
+		this.manager_name = user.manager_name;
+		this.cash = user.cash;
+		this.point = user.point;
+		this.role = user.role;
+		this.is_register_account = user.is_register_account;
+		this.token = user.token;
+	}
 }

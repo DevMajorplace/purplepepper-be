@@ -30,21 +30,11 @@ export class UserController {
 	@ApiResponse({ type: UserLoginResDto })
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async login(@Body() user: LoginReqDto, @Req() req: any, @Res() res: Response) {
-		const { company_name, user_id, manager_name, cash, point, role, token } = await this.userService.login(user, req);
+		const loginResponse = await this.userService.login(user, req);
+		const { token } = loginResponse;
 		res.cookie('access_token', token.accessToken);
 		res.cookie('refresh_token', token.refreshToken);
-		return res.json({
-			company_name,
-			user_id,
-			manager_name,
-			cash,
-			point,
-			role,
-			token: {
-				accessToken: token.accessToken,
-				refreshToken: token.refreshToken,
-			},
-		});
+		return res.json(loginResponse);
 	}
 
 	@Post('logout')
