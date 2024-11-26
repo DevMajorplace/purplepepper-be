@@ -10,7 +10,7 @@ export class MonthlySales extends Document {
 	sales_amount: number;
 
 	@Prop({ required: true })
-	target_revenue: number;
+	target_sales: number;
 
 	created_at: Date;
 }

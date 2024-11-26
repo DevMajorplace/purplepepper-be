@@ -19,7 +19,7 @@ export class User extends Document {
 	manager_contact: string;
 
 	@Prop({ default: 0 })
-	monthly_target_revenue: number;
+	monthly_target_sales: number;
 
 	@Prop({ type: [String], ref: 'User', default: [] })
 	parent_ids: string[];
