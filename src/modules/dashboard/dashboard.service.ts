@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import * as moment from 'moment-timezone';
 import { Model } from 'mongoose';
@@ -78,7 +78,7 @@ export class DashboardService {
 		const user = req.user;
 
 		if (!user || !user.userId || !user.role) {
-			throw new UnauthorizedException(ERROR_MESSAGE_PERMISSION_DENIED);
+			throw new ForbiddenException(ERROR_MESSAGE_PERMISSION_DENIED);
 		}
 
 		// 역할에 따른 필터 생성
