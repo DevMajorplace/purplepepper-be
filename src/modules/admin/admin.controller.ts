@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Patch, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiExtraModels, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusQueryDto } from '../admin/dto/user-status-query.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -33,7 +33,22 @@ export class AdminController {
 
 	// 가입 대기/거절 회원 조회
 	@Get('status')
-	@ApiResponse({ type: UserStatusResDto })
+	@ApiExtraModels(UserStatusResDto)
+	@ApiResponse({
+		schema: {
+			type: 'object',
+			properties: {
+				data: {
+					type: 'array',
+					items: { $ref: getSchemaPath(UserStatusResDto) },
+				},
+				totalItems: { type: 'number' },
+				totalPages: { type: 'number' },
+				currentPage: { type: 'number' },
+				pageSize: { type: 'number' },
+			},
+		},
+	})
 	async findUsersByStatus(
 		@Query('page') page: number,
 		@Query('pageSize') pageSize: number,
@@ -47,30 +62,42 @@ export class AdminController {
 	}> {
 		return this.adminService.findUsersByStatus(query.status, page, pageSize);
 	}
-
 	// 가입 승인(단일, 다중 사용자)
 	@Patch('approve')
 	@ApiResponse({ type: UsersUpdateResultResDto })
-	async approveUsers(
-		@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })) body: UsersUpdateReqDto,
-	): Promise<UsersUpdateResultResDto> {
-		const { userIds } = body;
-		return this.adminService.updateUserStatus(userIds, 'approved');
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+	async approveUsers(@Body() body: UsersUpdateReqDto): Promise<UsersUpdateResultResDto> {
+		const { user_ids } = body;
+		return this.adminService.updateUserStatus(user_ids, 'approved');
 	}
 
 	// 가입 거절(단일, 다중 사용자)
 	@Patch('decline')
 	@ApiResponse({ type: UsersUpdateResultResDto })
-	async declineUsers(
-		@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })) body: UsersUpdateReqDto,
-	): Promise<UsersUpdateResultResDto> {
-		const { userIds } = body;
-		return this.adminService.updateUserStatus(userIds, 'declined');
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+	async declineUsers(@Body() body: UsersUpdateReqDto): Promise<UsersUpdateResultResDto> {
+		const { user_ids } = body;
+		return this.adminService.updateUserStatus(user_ids, 'declined');
 	}
 
 	// 가입된 광고주 목록 조회
 	@Get('clients')
-	@ApiResponse({ type: ClientListResDto })
+	@ApiExtraModels(ClientListResDto)
+	@ApiResponse({
+		schema: {
+			type: 'object',
+			properties: {
+				data: {
+					type: 'array',
+					items: { $ref: getSchemaPath(ClientListResDto) },
+				},
+				totalItems: { type: 'number' },
+				totalPages: { type: 'number' },
+				currentPage: { type: 'number' },
+				pageSize: { type: 'number' },
+			},
+		},
+	})
 	async getAllClients(
 		@Query('page') page: number,
 		@Query('pageSize') pageSize: number,
@@ -105,7 +132,22 @@ export class AdminController {
 
 	// 가입된 총판 목록 조회
 	@Get('agencies')
-	@ApiResponse({ type: AgencyListResDto })
+	@ApiExtraModels(AgencyListResDto)
+	@ApiResponse({
+		schema: {
+			type: 'object',
+			properties: {
+				data: {
+					type: 'array',
+					items: { $ref: getSchemaPath(AgencyListResDto) },
+				},
+				totalItems: { type: 'number' },
+				totalPages: { type: 'number' },
+				currentPage: { type: 'number' },
+				pageSize: { type: 'number' },
+			},
+		},
+	})
 	async getAllAgencies(
 		@Query('page') page: number,
 		@Query('pageSize') pageSize: number,
@@ -140,7 +182,22 @@ export class AdminController {
 
 	// 광고주 캐시 충전 요청 확인
 	@Get('charge-request')
-	@ApiResponse({ type: CashRequestListResDto })
+	@ApiExtraModels(CashRequestListResDto)
+	@ApiResponse({
+		schema: {
+			type: 'object',
+			properties: {
+				data: {
+					type: 'array',
+					items: { $ref: getSchemaPath(CashRequestListResDto) },
+				},
+				totalItems: { type: 'number' },
+				totalPages: { type: 'number' },
+				currentPage: { type: 'number' },
+				pageSize: { type: 'number' },
+			},
+		},
+	})
 	async getChargeRequest(
 		@Query('page') page: number,
 		@Query('pageSize') pageSize: number,
@@ -157,18 +214,20 @@ export class AdminController {
 	// 광고주 캐시 충전 요청 승인
 	@Patch('charge-request/approve')
 	@ApiResponse({ type: CashRequestListResDto })
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async approveChargeRequest(
-		@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })) body: CashRequestListReqDto,
-	): Promise<{ updatedCashLogs: CashRequestListResDto[]; missingCashLogIds: string[] }> {
+		@Body() body: CashRequestListReqDto,
+	): Promise<{ success: CashRequestListResDto[]; failed: { cashLogIdx: string; reason: string }[] }> {
 		return this.adminService.updateChargeRequest({ ...body, status: CashLogStatus.APPROVED });
 	}
 
 	// 광고주 캐시 충전 요청 거절
 	@Patch('charge-request/decline')
 	@ApiResponse({ type: CashRequestListResDto })
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async declineChargeRequest(
-		@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })) body: CashRequestListReqDto,
-	): Promise<{ updatedCashLogs: CashRequestListResDto[]; missingCashLogIds: string[] }> {
+		@Body() body: CashRequestListReqDto,
+	): Promise<{ success: CashRequestListResDto[]; failed: { cashLogIdx: string; reason: string }[] }> {
 		return this.adminService.updateChargeRequest({ ...body, status: CashLogStatus.REJECTED });
 	}
 

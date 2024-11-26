@@ -4,10 +4,9 @@ import { Model } from 'mongoose';
 import { paginate } from 'src/common/utils/pagination.util';
 import { ERROR_MESSAGE_BOARD_NOT_FOUND } from '../../common/constants/error-messages';
 import { Board } from '../../db/schema/board.schema';
-import { BoardItemDto } from './dto/board.item.dto';
 import { BoardReqDto } from './dto/req/board.req.dto';
 import { BoardDetailResDto } from './dto/res/board.detail.res.dto';
-import { BoardListResDto } from './dto/res/board.list.res.dto';
+import { BoardItemDto } from './dto/res/board.item.dto';
 
 @Injectable()
 export class BoardService {
@@ -20,10 +19,17 @@ export class BoardService {
 		category: string = '',
 		title: string = '',
 		@Req() req: any,
-	): Promise<BoardListResDto> {
+	): Promise<{
+		data: BoardItemDto[];
+		totalItems: number;
+		totalPages: number;
+		currentPage: number;
+		pageSize: number;
+	}> {
 		const user = req.user;
 		const query = this.buildQuery(user.role, category, title);
 		const result = await paginate(this.boardModel, page, pageSize, query);
+
 		const items = result.data.map(
 			board =>
 				new BoardItemDto({
@@ -35,8 +41,13 @@ export class BoardService {
 				}),
 		);
 
-		const boardList = new BoardListResDto(items);
-		return boardList;
+		return {
+			data: items,
+			totalItems: result.totalItems,
+			totalPages: result.totalPages,
+			currentPage: page,
+			pageSize: pageSize,
+		};
 	}
 
 	//게시글 조회

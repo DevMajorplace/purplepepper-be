@@ -9,5 +9,5 @@ export class UsersUpdateReqDto {
 		description: '승인/거절할 사용자 ID 배열',
 		example: ['user1'],
 	})
-	public readonly userIds!: string[];
+	public readonly user_ids!: string[];
 }
