@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { Advertisement, AdvertisementSchema } from '../../db/schema/advertisement.schema';
+import { CashLog, CashLogSchema } from '../../db/schema/cash-log.schema';
+import { User, UserSchema } from '../../db/schema/user.schema';
 import { AuthModule } from '../auth/auth.module';
-import { User, UserSchema } from '../user/schemas/user.schema';
 import { ClientController } from './client.controller';
 import { ClientService } from './client.service';
-import { Advertisement, AdvertisementSchema } from './schemas/advertisement.schema';
-import { CashLog, CashLogSchema } from './schemas/cash-log.schema';
 
 @Module({
 	imports: [

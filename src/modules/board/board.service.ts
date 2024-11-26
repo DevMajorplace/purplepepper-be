@@ -3,11 +3,11 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { paginate } from 'src/common/utils/pagination.util';
 import { ERROR_MESSAGE_BOARD_NOT_FOUND } from '../../common/constants/error-messages';
+import { Board } from '../../db/schema/board.schema';
 import { BoardItemDto } from './dto/board.item.dto';
 import { BoardReqDto } from './dto/req/board.req.dto';
 import { BoardDetailResDto } from './dto/res/board.detail.res.dto';
 import { BoardListResDto } from './dto/res/board.list.res.dto';
-import { Board } from './schemas/board.schema';
 
 @Injectable()
 export class BoardService {

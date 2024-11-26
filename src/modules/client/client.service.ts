@@ -2,12 +2,12 @@ import { BadRequestException, Injectable, Req } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ERROR_MESSAGE_INVALID_AMOUNT } from 'src/common/constants/error-messages';
-import { User } from '../user/schemas/user.schema';
+import { Advertisement } from '../../db/schema/advertisement.schema';
+import { CashLog } from '../../db/schema/cash-log.schema';
+import { User } from '../../db/schema/user.schema';
 import { ChargeCashReqDto } from './dto/req/charge.cash.req.dto';
 import { CashLogsListResDto } from './dto/res/cash.log.list.res.dto';
 import { ChargeCashResDto } from './dto/res/charge.cash.res.dto';
-import { Advertisement } from './schemas/advertisement.schema';
-import { CashLog } from './schemas/cash-log.schema';
 import { CashLogCategory, CashLogStatus, CashLogType } from './types/cash-log.enum';
 
 @Injectable()

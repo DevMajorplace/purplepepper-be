@@ -7,31 +7,35 @@ import { setApprovedDateQuery, setBaseQuery } from 'src/common/utils/filter.util
 import { paginate, PaginationResult } from 'src/common/utils/pagination.util';
 import { isNotEmptyUserId, validatePassword, validHierarchy } from 'src/common/utils/validation.util';
 import {
+	ERROR_MESSAGE_CASH_LOG_ID_MISSING,
 	ERROR_MESSAGE_CASH_LOGS_NOT_FOUND,
 	ERROR_MESSAGE_INVALID_ROLE,
 	ERROR_MESSAGE_INVALID_STATUS_LOGS,
+	ERROR_MESSAGE_INVALID_TARGET_SALES,
 	ERROR_MESSAGE_NO_REJECTION_REASON,
 	ERROR_MESSAGE_NO_USER_IDS,
 	ERROR_MESSAGE_PARENT_NOT_FOUND,
 	ERROR_MESSAGE_USER_NOT_FOUND,
 	ERROR_MESSAGE_USERS_NOT_FOUND,
 } from '../../common/constants/error-messages';
+import { CashLog } from '../../db/schema/cash-log.schema';
+import { LoginLog } from '../../db/schema/login-log.schema';
+import { User } from '../../db/schema/user.schema';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
 import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.dto';
-import { CashLog } from '../client/schemas/cash-log.schema';
 import { CashLogCategory, CashLogStatus } from '../client/types/cash-log.enum';
-import { LoginLog } from '../user/schemas/login-log.schema';
-import { User } from '../user/schemas/user.schema';
 import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
 import { AgencyListReqDto } from './dto/req/agency.list.req.dto';
 import { CashRequestListReqDto } from './dto/req/cash.request.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
+import { TargetSalesReqDto } from './dto/req/target.sales.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
 import { CashRequestListResDto } from './dto/res/cash.request.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
+import { TargetSalesResDto } from './dto/res/target.sales.res.dto';
 
 @Injectable()
 export class AdminService {
@@ -470,7 +474,7 @@ export class AdminService {
 
 		// 요청된 ID가 없으면 예외 처리
 		if (!cashLogIdx || cashLogIdx.length === 0) {
-			throw new BadRequestException('캐시 로그 ID가 제공되지 않았습니다.');
+			throw new BadRequestException(ERROR_MESSAGE_CASH_LOG_ID_MISSING);
 		}
 
 		// 존재하는 캐시 로그 조회
@@ -538,6 +542,76 @@ export class AdminService {
 		return {
 			updatedCashLogs: updatedCashLogs.map(cashLog => new CashRequestListResDto(cashLog)),
 			missingCashLogIds,
+		};
+	}
+
+	// 목표 매출 설정
+	async updateTargetSales(
+		targetSalesReqDto: TargetSalesReqDto,
+	): Promise<{ success: TargetSalesResDto[]; failed: { user_id: string; reason: string }[] }> {
+		const { targets } = targetSalesReqDto;
+
+		// 입력된 모든 user_id 추출
+		const userIds = targets.map(target => target.user_id);
+
+		// DB에서 존재하는 사용자 조회
+		const existingUsers = await this.userModel.find({ user_id: { $in: userIds } }).exec();
+		const existingUserIds = existingUsers.map(user => user.user_id);
+
+		// 존재하지 않는 사용자 ID 추출
+		const notFoundIds = userIds.filter(id => !existingUserIds.includes(id));
+
+		// 성공적으로 업데이트된 결과를 저장할 배열
+		const results: TargetSalesResDto[] = [];
+		const failed: { user_id: string; reason: string }[] = [];
+
+		for (const target of targets) {
+			const { user_id, target_sales } = target;
+
+			// 목표 매출 유효성 검사
+			if (target_sales < 0) {
+				failed.push({
+					user_id,
+					reason: ERROR_MESSAGE_INVALID_TARGET_SALES,
+				});
+				continue;
+			}
+
+			// 존재하지 않는 ID는 건너뜀
+			if (notFoundIds.includes(user_id)) {
+				failed.push({
+					user_id,
+					reason: ERROR_MESSAGE_USER_NOT_FOUND,
+				});
+				continue;
+			}
+
+			try {
+				// userModel의 monthly_target_sales 필드 업데이트
+				const updatedTargetSales = await this.userModel
+					.findOneAndUpdate({ user_id: user_id }, { $set: { monthly_target_sales: target_sales } }, { new: true })
+					.exec();
+
+				// 결과 DTO에 추가
+				results.push(
+					new TargetSalesResDto({
+						user_id: updatedTargetSales.user_id,
+						target_sales: updatedTargetSales.monthly_target_sales,
+					}),
+				);
+			} catch (error) {
+				// 업데이트 중 에러 발생 시 실패 이유 추가
+				failed.push({
+					user_id,
+					reason: `Failed to update target sales due to: ${error.message}`,
+				});
+			}
+		}
+
+		// 성공 및 실패 결과 반환
+		return {
+			success: results,
+			failed,
 		};
 	}
 }

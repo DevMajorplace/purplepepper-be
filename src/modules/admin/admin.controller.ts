@@ -13,12 +13,14 @@ import { AgencyListReqDto } from './dto/req/agency.list.req.dto';
 import { CashRequestListReqDto } from './dto/req/cash.request.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
+import { TargetSalesReqDto } from './dto/req/target.sales.req.dto';
 import { UsersUpdateReqDto } from './dto/req/user.status.update.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
 import { CashRequestListResDto } from './dto/res/cash.request.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
+import { TargetSalesResDto } from './dto/res/target.sales.res.dto';
 import { UsersUpdateResultResDto } from './dto/res/user.update.result.res.dto';
 
 @ApiTags('Admin')
@@ -168,5 +170,15 @@ export class AdminController {
 		@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })) body: CashRequestListReqDto,
 	): Promise<{ updatedCashLogs: CashRequestListResDto[]; missingCashLogIds: string[] }> {
 		return this.adminService.updateChargeRequest({ ...body, status: CashLogStatus.REJECTED });
+	}
+
+	// 목표 매출 설정
+	@Patch('target-sales')
+	@ApiResponse({ type: TargetSalesResDto })
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+	async updateTargetSalesForAdmin(
+		@Body() targetSalesReqDto: TargetSalesReqDto,
+	): Promise<{ success: TargetSalesResDto[]; failed: { user_id: string; reason: string }[] }> {
+		return this.adminService.updateTargetSales(targetSalesReqDto);
 	}
 }
