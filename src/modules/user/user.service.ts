@@ -1,5 +1,6 @@
 import {
 	BadRequestException,
+	ForbiddenException,
 	Injectable,
 	InternalServerErrorException,
 	NotFoundException,
@@ -105,14 +106,14 @@ export class UserService {
 		// 사용자 존재 여부 확인
 		const existedUser = await this.userModel.findOne({ user_id: userId }).exec();
 		if (!existedUser) {
-			throw new UnauthorizedException(ERROR_MESSAGE_USER_LOGIN_FAILED);
+			throw new BadRequestException(ERROR_MESSAGE_USER_LOGIN_FAILED);
 		}
 
 		// 승인 상태 확인
 		if (existedUser.status === 'declined') {
-			throw new UnauthorizedException(ERROR_MESSAGE_STATUS_DECLINED);
+			throw new ForbiddenException(ERROR_MESSAGE_STATUS_DECLINED);
 		} else if (existedUser.status === 'pending') {
-			throw new UnauthorizedException(ERROR_MESSAGE_STATUS_PENDING);
+			throw new ForbiddenException(ERROR_MESSAGE_STATUS_PENDING);
 		}
 
 		try {
@@ -136,7 +137,7 @@ export class UserService {
 				await this.loginLogModel.create(loginLog);
 				await this.userModel.updateOne({ _id: existedUser._id }, { $set: { login_failed: updatedLoginFailedCount } });
 
-				throw new UnauthorizedException(ERROR_MESSAGE_USER_LOGIN_FAILED);
+				throw new BadRequestException(ERROR_MESSAGE_USER_LOGIN_FAILED);
 			}
 
 			const payload = { userId: userId, role: existedUser.role };
@@ -164,7 +165,7 @@ export class UserService {
 
 	async tokenRefresh(@Req() req: Request): Promise<{ accessToken: string }> {
 		const token = req.cookies?.refresh_token;
-		if (!token) throw new UnauthorizedException(ERROR_MESSAGE_NO_TOKEN);
+		if (!token) throw new BadRequestException(ERROR_MESSAGE_NO_TOKEN);
 
 		const { userId } = this.authService.verifyToken(token, 'refresh');
 		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
@@ -283,11 +284,11 @@ export class UserService {
 	async resetUserPassword(@Req() req: Request, password: string): Promise<{ status: string }> {
 		validatePassword(password);
 		const token = req.cookies?.reset_token;
-		if (!token) throw new UnauthorizedException(ERROR_MESSAGE_NO_TOKEN);
+		if (!token) throw new BadRequestException(ERROR_MESSAGE_NO_TOKEN);
 
 		const { userId, resetToken } = this.authService.verifyToken(token, 'reset');
 		if (!userId) throw new UnauthorizedException(ERROR_MESSAGE_INVALID_TOKEN);
-		if (!resetToken) throw new UnauthorizedException(ERROR_MESSAGE_PERMISSION_DENIED);
+		if (!resetToken) throw new ForbiddenException(ERROR_MESSAGE_PERMISSION_DENIED);
 
 		const user = await this.userModel.findOne({ user_id: userId }).exec();
 		if (!user) {

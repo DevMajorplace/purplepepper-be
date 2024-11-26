@@ -1,4 +1,4 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ERROR_MESSAGE_INVALID_TOKEN, ERROR_MESSAGE_PERMISSION_DENIED } from 'src/common/constants/error-messages';
 import { Role } from '../types/role.enum';
@@ -21,7 +21,7 @@ export class RoleGuard implements CanActivate {
 
 		const { role } = request.user;
 		if (!role || !roles.includes(role)) {
-			throw new UnauthorizedException(ERROR_MESSAGE_PERMISSION_DENIED);
+			throw new ForbiddenException(ERROR_MESSAGE_PERMISSION_DENIED);
 		}
 
 		return true;
