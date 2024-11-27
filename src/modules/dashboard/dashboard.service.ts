@@ -110,7 +110,7 @@ export class DashboardService {
 		const currentMonth = moment().tz('Asia/Seoul').format('YYYY-MM');
 
 		// monthlyModel 조회
-		const targetSales = await this.MonthlySalesModel.findOne({ user_id: user.userId, month: currentMonth });
+		const targetSales = await this.MonthlySalesModel.findOne({ user_id: user.userId, month: currentMonth }).exec();
 
 		const currentMonthTargetSales = targetSales.target_sales;
 		const currentMonthSales = targetSales.sales_amount;
