@@ -17,6 +17,7 @@ import { TargetSalesReqDto } from './dto/req/target.sales.req.dto';
 import { UsersUpdateReqDto } from './dto/req/user.status.update.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
+import { AgencySalesStatResDto } from './dto/res/agency.sales.stat.dto';
 import { CashRequestListResDto } from './dto/res/cash.request.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
@@ -239,5 +240,13 @@ export class AdminController {
 		@Body() targetSalesReqDto: TargetSalesReqDto,
 	): Promise<{ success: TargetSalesResDto[]; failed: { user_id: string; reason: string }[] }> {
 		return this.adminService.updateTargetSales(targetSalesReqDto);
+	}
+
+	// 목표 매출 조회
+	@Get('target-sales')
+	@ApiResponse({ type: AgencySalesStatResDto, isArray: true })
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+	async getTargetSalesForAgencies(): Promise<AgencySalesStatResDto[]> {
+		return this.adminService.getAgencyMonthlyTargetSales();
 	}
 }

@@ -3,6 +3,7 @@ export const ERROR_MESSAGE_DUPLICATE_ID = '이미 존재하는 아이디입니�
 export const ERROR_MESSAGE_HASH_FAILED = '비밀번호 해싱에 실패했습니다.';
 export const ERROR_MESSAGE_USER_LOGIN_FAILED = '이메일 또는 비밀번호가 일치하지 않습니다.';
 export const ERROR_MESSAGE_INVALID_ROLE = '유효하지 않은 역할입니다.';
+export const ERROR_MESSAGE_INVALID_USER = '유효하지 않은 사용자입니다.';
 export const ERROR_MESSAGE_USER_NOT_FOUND = '존재하지 않는 사용자입니다.';
 export const ERROR_MESSAGE_PARENT_NOT_FOUND = '추천인 아이디가 존재하지 않습니다.';
 export const ERROR_MESSAGE_NO_USER_IDS = '사용자가 없습니다.';
