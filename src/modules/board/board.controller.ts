@@ -1,4 +1,17 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	Param,
+	Post,
+	Put,
+	Query,
+	Req,
+	UseGuards,
+	UsePipes,
+	ValidationPipe,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiExtraModels, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
 import { Board } from '../../db/schema/board.schema';
 import { AuthGuard } from '../auth/guards/auth.guard';
@@ -62,6 +75,7 @@ export class BoardController {
 	@Post()
 	@UserRoles(Role.Admin)
 	@ApiResponse({ type: Board })
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async createBoard(@Body() board: BoardReqDto): Promise<Board> {
 		return this.boardService.createBoard(board);
 	}

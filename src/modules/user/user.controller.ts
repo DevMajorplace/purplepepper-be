@@ -5,6 +5,7 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { FindUserDataReqDto } from './dto/req/find.user.data.req.dto';
 import { LoginReqDto } from './dto/req/login.req.dto';
+import { ResetPasswordReqDto } from './dto/req/reset.password.req.dto';
 import { SignUpReqDto } from './dto/req/signup.req.dto';
 import { UserDetailReqDto } from './dto/req/user.detail.req.dto';
 import { SignUpResDto } from './dto/res/signup.res.dto';
@@ -83,7 +84,7 @@ export class UserController {
 	// 비밀번호 찾기
 	@Post('find/password')
 	async findUserPassword(@Res() res: Response, @Body() findUserDataReqDto: FindUserDataReqDto) {
-		// 성공 시 해당 사용자 데이터에 임시 접근 가능한 token을 발급해서 처리?
+		// 성공 시 해당 사용자 데이터에 임시 접근 가능한 token을 발급
 		const { resetToken } = await this.userService.findUserPassword(findUserDataReqDto);
 		res.cookie('reset_token', resetToken);
 		return res.json({ resetToken: resetToken });
@@ -92,8 +93,12 @@ export class UserController {
 	// 비밀번호 재설정
 	@Patch('reset/password')
 	@ApiBearerAuth('access-token')
-	async updateUserPassword(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body) {
-		const { password } = body;
+	async updateUserPassword(
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+		@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })) resetPasswordReqDto: ResetPasswordReqDto,
+	) {
+		const { password } = resetPasswordReqDto;
 		const resetStatus = await this.userService.resetUserPassword(req, password);
 		res.clearCookie('reset_token');
 		return resetStatus;

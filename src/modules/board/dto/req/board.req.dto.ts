@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsString } from 'class-validator';
+import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Role } from 'src/modules/auth/types/role.enum';
 
 export class BoardReqDto {
@@ -19,11 +19,14 @@ export class BoardReqDto {
 	public readonly content: string;
 
 	@IsArray()
+	@IsEnum(Role, { each: true })
 	@IsNotEmpty()
 	@ApiProperty({ description: '공개 범위 - admin, agency, client' })
 	public readonly visible: Role[];
 
-	@IsString()
-	@ApiProperty({ description: '파일 url' })
+	@IsArray()
+	@IsString({ each: true })
+	@IsOptional()
+	@ApiProperty({ description: '파일 url', required: false })
 	public readonly file_urls?: string[];
 }
