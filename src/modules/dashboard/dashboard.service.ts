@@ -3,16 +3,21 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as moment from 'moment-timezone';
 import { Model } from 'mongoose';
 import { ERROR_MESSAGE_INVALID_ROLE, ERROR_MESSAGE_PERMISSION_DENIED } from 'src/common/constants/error-messages';
+import { MonthlySales } from 'src/db/schema/monthly-sales.schema';
 import { Board } from '../../db/schema/board.schema';
 import { User } from '../../db/schema/user.schema';
 import { ClientStatResDto } from './dto/res/client.number.res.dto';
 import { NoticeResDto } from './dto/res/notice.res.dto';
+import { TargetSalesStatResDto } from './dto/res/target.sales.stat.res.dto';
+
+type NewType = MonthlySales;
 
 @Injectable()
 export class DashboardService {
 	constructor(
 		@InjectModel(Board.name) private readonly boardModel: Model<Board>,
 		@InjectModel(User.name) private readonly userModel: Model<User>,
+		@InjectModel(MonthlySales.name) private readonly MonthlySalesModel: Model<NewType>,
 	) {}
 
 	// 역할에 따른 필터링 함수
@@ -94,6 +99,31 @@ export class DashboardService {
 		return new ClientStatResDto({
 			clientsCount: currentMonthCount,
 			growthRate,
+		});
+	}
+
+	// 이번 달 목표 매출
+	async getMonthlyTargetSales(req: any): Promise<TargetSalesStatResDto> {
+		const user = req.user;
+
+		/// KST 시간 기준으로 현재 월 구하기
+		const currentMonth = moment().tz('Asia/Seoul').format('YYYY-MM');
+
+		// monthlyModel 조회
+		const targetSales = await this.MonthlySalesModel.findOne({ user_id: user.userId, month: currentMonth });
+
+		const currentMonthTargetSales = targetSales.target_sales;
+		const currentMonthSales = targetSales.sales_amount;
+
+		// 달성률 계산
+		let achievementRate = 0;
+		if (currentMonthTargetSales > 0) {
+			achievementRate = (currentMonthSales / currentMonthTargetSales) * 100;
+		}
+
+		return new TargetSalesStatResDto({
+			target_sales: currentMonthTargetSales,
+			achievement_rate: achievementRate,
 		});
 	}
 }
