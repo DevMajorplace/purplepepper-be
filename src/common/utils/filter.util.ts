@@ -1,4 +1,6 @@
 import * as moment from 'moment-timezone';
+import { Model } from 'mongoose';
+import { User } from 'src/db/schema/user.schema';
 
 // 기본 조건 + 업체명 검색 함수
 export function setBaseQuery(role: string, dto: any, parentId?: string) {
@@ -32,4 +34,9 @@ export function setApprovedDateQuery(dto: any, query: any) {
 			query.approved_at.$lte = moment.tz(dto.approve_end_date, 'Asia/Seoul').endOf('day').toDate();
 		}
 	}
+}
+
+// is_active true 인 유저 필터링 함수
+export async function setActiveQuery(userModel: Model<User>): Promise<User[]> {
+	return await userModel.find({ is_active: true }).exec();
 }

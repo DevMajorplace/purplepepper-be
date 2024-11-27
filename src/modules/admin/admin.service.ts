@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import * as bcrypt from 'bcrypt';
 import * as moment from 'moment-timezone';
 import { Model } from 'mongoose';
-import { setApprovedDateQuery, setBaseQuery } from 'src/common/utils/filter.util';
+import { setActiveQuery, setApprovedDateQuery, setBaseQuery } from 'src/common/utils/filter.util';
 import { paginate, PaginationResult } from 'src/common/utils/pagination.util';
 import { isNotEmptyUserId, validatePassword, validHierarchy } from 'src/common/utils/validation.util';
 import { MonthlySales } from 'src/db/schema/monthly-sales.schema';
@@ -15,6 +15,7 @@ import {
 	ERROR_MESSAGE_INVALID_ROLE,
 	ERROR_MESSAGE_INVALID_STATUS_LOGS,
 	ERROR_MESSAGE_INVALID_TARGET_SALES,
+	ERROR_MESSAGE_INVALID_USER,
 	ERROR_MESSAGE_NO_CASH_LOG_USSER,
 	ERROR_MESSAGE_NO_REJECTION_REASON,
 	ERROR_MESSAGE_NO_USER_IDS,
@@ -35,6 +36,7 @@ import { ClientListReqDto } from './dto/req/client.list.req.dto';
 import { TargetSalesReqDto } from './dto/req/target.sales.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
+import { AgencySalesStatResDto } from './dto/res/agency.sales.stat.dto';
 import { CashRequestListResDto } from './dto/res/cash.request.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
@@ -593,12 +595,12 @@ export class AdminService {
 		// 입력된 모든 user_id 추출
 		const userIds = targets.map(target => target.user_id);
 
-		// DB에서 존재하는 사용자 조회
-		const existingUsers = await this.userModel.find({ user_id: { $in: userIds } }).exec();
-		const existingUserIds = existingUsers.map(user => user.user_id);
+		// is_active 유저 조회 (setActiveQuery 사용)
+		const activeUsers = await setActiveQuery(this.userModel);
+		const activeUserIds = activeUsers.map(user => user.user_id);
 
-		// 존재하지 않는 사용자 ID 추출
-		const notFoundIds = userIds.filter(id => !existingUserIds.includes(id));
+		// 존재하지 않거나 비활성화된 사용자 ID 추출
+		const notFoundOrInactiveIds = userIds.filter(id => !activeUserIds.includes(id));
 
 		// 성공적으로 업데이트된 결과를 저장할 배열
 		const results: TargetSalesResDto[] = [];
@@ -620,10 +622,10 @@ export class AdminService {
 			}
 
 			// 존재하지 않는 ID는 건너뜀
-			if (notFoundIds.includes(user_id)) {
+			if (notFoundOrInactiveIds.includes(user_id)) {
 				failed.push({
 					user_id,
-					reason: ERROR_MESSAGE_USER_NOT_FOUND,
+					reason: ERROR_MESSAGE_INVALID_USER,
 				});
 				continue;
 			}
@@ -662,5 +664,41 @@ export class AdminService {
 			success: results,
 			failed,
 		};
+	}
+
+	// 이번 달 총판별 목표 매출 조회
+	async getAgencyMonthlyTargetSales(): Promise<AgencySalesStatResDto[]> {
+		const monthlySales = await this.MonthlySalesModel.find({}).exec();
+
+		// monthlySales에서 user_id 추출하기
+		const userIds = monthlySales.map(sale => sale.user_id);
+
+		// is_active 유저 조회
+		const activeUsers = await setActiveQuery(this.userModel);
+
+		// user_id로 userModel 조회해서 총판 정보들만 추리기
+		const agencyUsers = activeUsers.filter(user => userIds.includes(user.user_id) && user.role === 'agency');
+
+		// 총판 ID를 기준으로 MonthlySales 데이터를 필터링
+		const agencyInfo = agencyUsers.map(user => ({
+			user_id: user.user_id,
+			company_name: user.company_name,
+		}));
+
+		const agencyMonthlySales = agencyInfo.map(agency => {
+			const salesData = monthlySales.find(sale => sale.user_id === agency.user_id);
+			const targetSales = salesData ? salesData.target_sales : 0;
+			const currentSales = salesData ? salesData.sales_amount : 0;
+			const achievementRate = targetSales > 0 ? (currentSales / targetSales) * 100 : 0;
+
+			return new AgencySalesStatResDto({
+				company_name: agency.company_name,
+				current_sales: currentSales,
+				target_sales: targetSales,
+				achievement_rate: parseFloat(achievementRate.toFixed(2)), // 소수점 둘째 자리까지 표시
+			});
+		});
+
+		return agencyMonthlySales;
 	}
 }
