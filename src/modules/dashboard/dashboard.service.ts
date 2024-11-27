@@ -122,6 +122,7 @@ export class DashboardService {
 		}
 
 		return new TargetSalesStatResDto({
+			current_month: currentMonth,
 			target_sales: currentMonthTargetSales,
 			achievement_rate: achievementRate,
 		});

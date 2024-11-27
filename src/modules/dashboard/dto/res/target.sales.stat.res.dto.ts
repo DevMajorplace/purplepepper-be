@@ -1,7 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class TargetSalesStatResDto {
+	@IsString()
+	@IsNotEmpty()
+	@ApiProperty({ description: '이번 달' })
+	public readonly current_month: string;
+
 	@IsNumber()
 	@IsNotEmpty()
 	@ApiProperty({ description: '이번 달 목표 매출' })
