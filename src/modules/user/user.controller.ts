@@ -12,7 +12,7 @@ import { UserDetailResDto } from './dto/res/user.detail.res.dto';
 import { UserLoginResDto } from './dto/res/user.login.res.dto';
 import { UserService } from './user.service';
 
-@ApiTags('User')
+@ApiTags('Users')
 @Controller('users')
 export class UserController {
 	constructor(private readonly userService: UserService) {}
