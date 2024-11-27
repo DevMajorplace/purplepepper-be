@@ -281,6 +281,11 @@ export class AdminService {
 		// 기본 검색 조건 + 업체명 검색
 		const query = setBaseQuery('client', clientListReqDto);
 
+		// 활동 중인 광고주만 조회
+		const activeUsers = await setActiveQuery(this.userModel);
+		const activeUserIds = activeUsers.map(user => user._id.toString());
+		query._id = { $in: activeUserIds }; // 활성 사용자만 필터링
+
 		// 가입승인일 필터링
 		setApprovedDateQuery(clientListReqDto, query);
 
@@ -347,6 +352,14 @@ export class AdminService {
 
 	// 단일 광고주 상세 조회
 	async getClientDetail(userId: string): Promise<ClientDetailResDto> {
+		// 활성 사용자 확인
+		const activeUsers = await setActiveQuery(this.userModel);
+		const isActiveUser = activeUsers.some(user => user.user_id === userId);
+
+		if (!isActiveUser) {
+			throw new NotFoundException(ERROR_MESSAGE_INVALID_USER);
+		}
+
 		return this.getDetail(userId, 'client') as Promise<ClientDetailResDto>;
 	}
 

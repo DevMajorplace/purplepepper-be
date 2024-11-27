@@ -1,7 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsDateString, IsOptional, IsString } from 'class-validator';
+import { PaginationQueryDto } from '../../../../common/dto/page-query.dto';
 
-export class ClientListReqDto {
+export class ClientListReqDto extends PaginationQueryDto {
 	@IsDateString()
 	@IsOptional()
 	@ApiProperty({ description: '가입 승인일 검색 시작일', required: false })

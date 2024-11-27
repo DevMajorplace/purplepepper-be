@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Patch, Query, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiExtraModels, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
+import { PaginationQueryDto } from '../../common/dto/page-query.dto';
 import { UserStatusResDto } from '../admin/dto/res/user.status.res.dto';
-import { UserStatusQueryDto } from '../admin/dto/user-status-query.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { UserRoles } from '../auth/types/role.decorator';
@@ -14,6 +14,7 @@ import { CashRequestListReqDto } from './dto/req/cash.request.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
 import { TargetSalesReqDto } from './dto/req/target.sales.req.dto';
+import { UserStatusQueryDto } from './dto/req/user.status.req.dto';
 import { UsersUpdateReqDto } from './dto/req/user.status.update.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
@@ -96,18 +97,15 @@ export class AdminController {
 			},
 		},
 	})
-	async getAllClients(
-		@Query('page') page: number,
-		@Query('pageSize') pageSize: number,
-		@Query() clientListReqDto: ClientListReqDto,
-	): Promise<{
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+	async getAllClients(@Query() clientListReqDto: ClientListReqDto): Promise<{
 		data: ClientListResDto[];
 		totalItems: number;
 		totalPages: number;
 		currentPage: number;
 		pageSize: number;
 	}> {
-		return this.adminService.getAllClients(page, pageSize, clientListReqDto);
+		return this.adminService.getAllClients(clientListReqDto.page, clientListReqDto.pageSize, clientListReqDto);
 	}
 
 	// 단일 광고주 상세 조회
@@ -146,18 +144,15 @@ export class AdminController {
 			},
 		},
 	})
-	async getAllAgencies(
-		@Query('page') page: number,
-		@Query('pageSize') pageSize: number,
-		@Query() agencyListReqDto: AgencyListReqDto,
-	): Promise<{
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+	async getAllAgencies(@Query() agencyListReqDto: AgencyListReqDto): Promise<{
 		data: AgencyListResDto[];
 		totalItems: number;
 		totalPages: number;
 		currentPage: number;
 		pageSize: number;
 	}> {
-		return this.adminService.getAllAgencies(page, pageSize, agencyListReqDto);
+		return this.adminService.getAllAgencies(agencyListReqDto.page, agencyListReqDto.pageSize, agencyListReqDto);
 	}
 
 	// 단일 총판 상세 조회
@@ -196,17 +191,15 @@ export class AdminController {
 			},
 		},
 	})
-	async getChargeRequest(
-		@Query('page') page: number,
-		@Query('pageSize') pageSize: number,
-	): Promise<{
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+	async getChargeRequest(@Query() paginationQueryDto: PaginationQueryDto): Promise<{
 		data: CashRequestListResDto[];
 		totalItems: number;
 		totalPages: number;
 		currentPage: number;
 		pageSize: number;
 	}> {
-		return this.adminService.getChargeRequest(page, pageSize);
+		return this.adminService.getChargeRequest(paginationQueryDto.page, paginationQueryDto.pageSize);
 	}
 
 	// 광고주 캐시 충전 요청 승인
