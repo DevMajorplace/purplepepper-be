@@ -68,8 +68,8 @@ export class BoardController {
 	@Get(':id')
 	@UserRoles(Role.Admin, Role.Agency, Role.Client)
 	@ApiResponse({ type: Board })
-	async getBoard(@Param('id') id: string): Promise<BoardDetailResDto> {
-		return this.boardService.getBoardById(id);
+	async getBoard(@Param('id') id: string, @Req() req: Request): Promise<BoardDetailResDto> {
+		return this.boardService.getBoardById(id, req);
 	}
 
 	@Post()
