@@ -12,13 +12,13 @@ import { UserDetailResDto } from './dto/res/user.detail.res.dto';
 import { UserLoginResDto } from './dto/res/user.login.res.dto';
 import { UserService } from './user.service';
 
-@ApiTags('User')
-@Controller('user')
+@ApiTags('Users')
+@Controller('users')
 export class UserController {
 	constructor(private readonly userService: UserService) {}
 
 	// 회원가입
-	@Post('signup')
+	@Post('/')
 	@ApiResponse({ type: SignUpResDto })
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async signUp(@Body() user: SignUpReqDto): Promise<SignUpResDto> {
@@ -48,7 +48,7 @@ export class UserController {
 	}
 
 	// User Token Refresh
-	@Get('refresh')
+	@Get('refresh-token')
 	async tokenRefresh(@Req() req: Request, @Res({ passthrough: true }) res: Response): Promise<{ accessToken: string }> {
 		const { accessToken } = await this.userService.tokenRefresh(req);
 		res.cookie('access_token', accessToken);
@@ -56,7 +56,7 @@ export class UserController {
 	}
 
 	// 내정보 확인
-	@Get('myInfo')
+	@Get('my-info')
 	@ApiBearerAuth('access-token')
 	@UseGuards(AuthGuard, RoleGuard)
 	@ApiResponse({ type: UserDetailResDto })
@@ -65,7 +65,7 @@ export class UserController {
 	}
 
 	// 단일 광고주 상세 정보 변경
-	@Patch('myInfo')
+	@Patch('my-info')
 	@ApiBearerAuth('access-token')
 	@UseGuards(AuthGuard)
 	@ApiResponse({ type: UserDetailResDto })
@@ -74,12 +74,14 @@ export class UserController {
 		return this.userService.updateMyDetail(req, userDetailReqDto);
 	}
 
-	@Post('findUserId')
+	// 아이디 찾기
+	@Post('find/id')
 	async findUserId(@Body() findUserDataReqDto: FindUserDataReqDto): Promise<{ userId: string }> {
 		return this.userService.findUserId(findUserDataReqDto);
 	}
 
-	@Post('findUserPassword')
+	// 비밀번호 찾기
+	@Post('find/password')
 	async findUserPassword(@Res() res: Response, @Body() findUserDataReqDto: FindUserDataReqDto) {
 		// 성공 시 해당 사용자 데이터에 임시 접근 가능한 token을 발급해서 처리?
 		const { resetToken } = await this.userService.findUserPassword(findUserDataReqDto);
@@ -87,7 +89,8 @@ export class UserController {
 		return res.json({ resetToken: resetToken });
 	}
 
-	@Patch('updateUserPassword')
+	// 비밀번호 재설정
+	@Patch('reset/password')
 	@ApiBearerAuth('access-token')
 	async updateUserPassword(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body) {
 		const { password } = body;

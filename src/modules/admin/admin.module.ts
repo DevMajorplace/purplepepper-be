@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { MonthlySales, MonthlySalesSchema } from 'src/db/schema/monthly-sales.schema';
 import { CashLog, CashLogSchema } from '../../db/schema/cash-log.schema';
 import { LoginLog, LoginLogSchema } from '../../db/schema/login-log.schema';
 import { User, UserSchema } from '../../db/schema/user.schema';
@@ -13,6 +14,7 @@ import { AdminService } from './admin.service';
 			{ name: User.name, schema: UserSchema },
 			{ name: LoginLog.name, schema: LoginLogSchema },
 			{ name: CashLog.name, schema: CashLogSchema },
+			{ name: MonthlySales.name, schema: MonthlySalesSchema },
 		]),
 		AuthModule,
 	],

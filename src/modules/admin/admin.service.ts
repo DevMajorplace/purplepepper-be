@@ -6,6 +6,7 @@ import { Model } from 'mongoose';
 import { setApprovedDateQuery, setBaseQuery } from 'src/common/utils/filter.util';
 import { paginate, PaginationResult } from 'src/common/utils/pagination.util';
 import { isNotEmptyUserId, validatePassword, validHierarchy } from 'src/common/utils/validation.util';
+import { MonthlySales } from 'src/db/schema/monthly-sales.schema';
 import {
 	ERROR_MESSAGE_ALREADY_IN_STATUS,
 	ERROR_MESSAGE_CASH_LOG_ID_MISSING,
@@ -47,6 +48,7 @@ export class AdminService {
 		@InjectModel(User.name) private readonly userModel: Model<User>,
 		@InjectModel(LoginLog.name) private readonly loginLogModel: Model<LoginLog>,
 		@InjectModel(CashLog.name) private readonly cashLogModel: Model<CashLog>,
+		@InjectModel(MonthlySales.name) private readonly MonthlySalesModel: Model<MonthlySales>,
 	) {}
 
 	// 공통 아이디 조회 함수
@@ -602,6 +604,9 @@ export class AdminService {
 		const results: TargetSalesResDto[] = [];
 		const failed: { user_id: string; reason: string }[] = [];
 
+		/// KST 시간 기준으로 현재 월 구하기
+		const currentMonth = moment().tz('Asia/Seoul').format('YYYY-MM');
+
 		for (const target of targets) {
 			const { user_id, target_sales } = target;
 
@@ -628,6 +633,13 @@ export class AdminService {
 				const updatedTargetSales = await this.userModel
 					.findOneAndUpdate({ user_id: user_id }, { $set: { monthly_target_sales: target_sales } }, { new: true })
 					.exec();
+
+				// MonthlySalesModel의 monthly_target_sales 필드 업데이트
+				await this.MonthlySalesModel.findOneAndUpdate(
+					{ user_id, month: currentMonth },
+					{ $set: { target_sales: target_sales } },
+					{ upsert: true, new: true },
+				).exec();
 
 				// 결과 DTO에 추가
 				results.push(
