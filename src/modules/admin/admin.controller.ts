@@ -50,18 +50,15 @@ export class AdminController {
 			},
 		},
 	})
-	async findUsersByStatus(
-		@Query('page') page: number,
-		@Query('pageSize') pageSize: number,
-		@Query() query: UserStatusQueryDto,
-	): Promise<{
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+	async findUsersByStatus(@Query() query: UserStatusQueryDto): Promise<{
 		data: UserStatusResDto[];
 		totalItems: number;
 		totalPages: number;
 		currentPage: number;
 		pageSize: number;
 	}> {
-		return this.adminService.findUsersByStatus(query.status, page, pageSize);
+		return this.adminService.findUsersByStatus(query.status, query.page, query.pageSize);
 	}
 	// 가입 승인(단일, 다중 사용자)
 	@Patch('approve')

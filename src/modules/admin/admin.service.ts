@@ -181,14 +181,21 @@ export class AdminService {
 	// 가입 대기/거절 회원 조회
 	async findUsersByStatus(
 		status: 'pending' | 'declined',
-		page: number,
-		pageSize: number,
+		page: number = 1,
+		pageSize: number = 15,
 	): Promise<PaginationResult<UserStatusResDto>> {
 		// 검색 조건 설정
 		const query = { status };
 
+		// is_active true인 사용자만 조회
+		const activeUsers = await setActiveQuery(this.userModel);
+		const activeUserIds = activeUsers.map(user => user._id.toString());
+
 		// 페이지네이션 호출
-		const result = await paginate(this.userModel, page, pageSize, query);
+		const result = await paginate(this.userModel, page, pageSize, {
+			...query,
+			_id: { $in: activeUserIds }, // 활성 회원만 필터링
+		});
 
 		// 결과 데이터 형식을 UserStatusResDto로 변환
 		return {
@@ -209,9 +216,21 @@ export class AdminService {
 		let updatedUsers: UserStatusUpdateResDto[] = []; // 성공적으로 업데이트된 사용자 목록
 
 		try {
-			const users = await this.userModel.find({ user_id: { $in: idsArray } }).exec();
+			const activeUsers = await setActiveQuery(this.userModel);
+			const activeUserIds = activeUsers.map(user => user.user_id);
+
+			// 입력된 ID 중 활성 사용자만 필터링
+			const validIds = idsArray.filter(id => activeUserIds.includes(id));
+			const invalidIds = idsArray.filter(id => !activeUserIds.includes(id));
+
+			// 비활성 사용자 ID를 실패 목록에 추가
+			invalidIds.forEach(id => {
+				failed.push(new FailedUserDto(id, ERROR_MESSAGE_INVALID_USER));
+			});
+
+			const users = await this.userModel.find({ user_id: { $in: validIds } }).exec();
 			const foundUserIds = users.map(user => user.user_id);
-			const missingUserIds = idsArray.filter(id => !foundUserIds.includes(id));
+			const missingUserIds = validIds.filter(id => !foundUserIds.includes(id));
 
 			missingUserIds.forEach(id => {
 				failed.push(new FailedUserDto(id, ERROR_MESSAGE_USER_NOT_FOUND));
