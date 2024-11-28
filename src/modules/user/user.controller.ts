@@ -4,9 +4,14 @@ import { Request, Response } from 'express';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { FindUserDataReqDto } from './dto/req/find.user.data.req.dto';
+import { FindUserPasswordReqDto } from './dto/req/find.user.password.req.dto';
 import { LoginReqDto } from './dto/req/login.req.dto';
+import { ResetPasswordReqDto } from './dto/req/reset.password.req.dto';
 import { SignUpReqDto } from './dto/req/signup.req.dto';
 import { UserDetailReqDto } from './dto/req/user.detail.req.dto';
+import { FindPasswordResDto } from './dto/res/find.password.res.dto';
+import { FindUserResDto } from './dto/res/find.user.res.dto';
+import { ResetPasswordResDto } from './dto/res/reset.password.res.dto';
 import { SignUpResDto } from './dto/res/signup.res.dto';
 import { UserDetailResDto } from './dto/res/user.detail.res.dto';
 import { UserLoginResDto } from './dto/res/user.login.res.dto';
@@ -76,24 +81,34 @@ export class UserController {
 
 	// 아이디 찾기
 	@Post('find/id')
-	async findUserId(@Body() findUserDataReqDto: FindUserDataReqDto): Promise<{ userId: string }> {
+	@ApiResponse({ type: FindUserResDto })
+	async findUserId(@Body() findUserDataReqDto: FindUserDataReqDto): Promise<FindUserResDto> {
 		return this.userService.findUserId(findUserDataReqDto);
 	}
 
 	// 비밀번호 찾기
 	@Post('find/password')
-	async findUserPassword(@Res() res: Response, @Body() findUserDataReqDto: FindUserDataReqDto) {
-		// 성공 시 해당 사용자 데이터에 임시 접근 가능한 token을 발급해서 처리?
-		const { resetToken } = await this.userService.findUserPassword(findUserDataReqDto);
-		res.cookie('reset_token', resetToken);
-		return res.json({ resetToken: resetToken });
+	@ApiResponse({ type: FindPasswordResDto })
+	async findUserPassword(
+		@Res() res: Response,
+		@Body() findUserPasswordReqDto: FindUserPasswordReqDto,
+	): Promise<Response<FindPasswordResDto>> {
+		// 성공 시 해당 사용자 데이터에 임시 접근 가능한 token을 발급
+		const result = await this.userService.findUserPassword(findUserPasswordReqDto);
+		res.cookie('reset_token', result.reset_token);
+		return res.json(result);
 	}
 
 	// 비밀번호 재설정
 	@Patch('reset/password')
-	@ApiBearerAuth('access-token')
-	async updateUserPassword(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() body) {
-		const { password } = body;
+	@ApiBearerAuth('reset-token')
+	@ApiResponse({ type: ResetPasswordResDto })
+	async updateUserPassword(
+		@Req() req: Request,
+		@Res({ passthrough: true }) res: Response,
+		@Body(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })) resetPasswordReqDto: ResetPasswordReqDto,
+	): Promise<ResetPasswordResDto> {
+		const { password } = resetPasswordReqDto;
 		const resetStatus = await this.userService.resetUserPassword(req, password);
 		res.clearCookie('reset_token');
 		return resetStatus;

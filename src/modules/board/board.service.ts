@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, Req } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, Req } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { paginate } from 'src/common/utils/pagination.util';
-import { ERROR_MESSAGE_BOARD_NOT_FOUND } from '../../common/constants/error-messages';
+import { ERROR_MESSAGE_BOARD_NOT_FOUND, ERROR_MESSAGE_PERMISSION_DENIED } from '../../common/constants/error-messages';
 import { Board } from '../../db/schema/board.schema';
+import { Role } from '../auth/types/role.enum';
 import { BoardReqDto } from './dto/req/board.req.dto';
 import { BoardDetailResDto } from './dto/res/board.detail.res.dto';
 import { BoardItemDto } from './dto/res/board.item.dto';
@@ -51,10 +52,15 @@ export class BoardService {
 	}
 
 	//게시글 조회
-	async getBoardById(id: string): Promise<BoardDetailResDto> {
+	async getBoardById(id: string, @Req() req: any): Promise<BoardDetailResDto> {
 		const board = await this.boardModel.findById(id).exec();
 		if (!board) {
 			throw new NotFoundException(ERROR_MESSAGE_BOARD_NOT_FOUND);
+		}
+
+		const { role } = req.user;
+		if (!board.visible.includes(role)) {
+			throw new ForbiddenException(ERROR_MESSAGE_PERMISSION_DENIED);
 		}
 
 		return new BoardDetailResDto({
@@ -70,7 +76,14 @@ export class BoardService {
 
 	//생성
 	async createBoard(board: BoardReqDto): Promise<Board> {
-		const newBoard = new this.boardModel(board);
+		const visible = board.visible.includes(Role.Admin) ? board.visible : board.visible.concat(Role.Admin);
+		const newBoard = new this.boardModel({
+			category: board.category,
+			title: board.title,
+			content: board.content,
+			visible: visible,
+			file_urls: board.file_urls,
+		});
 		return await newBoard.save();
 	}
 
