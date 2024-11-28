@@ -14,8 +14,9 @@ import { CashRequestListReqDto } from './dto/req/cash.request.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
 import { TargetSalesReqDto } from './dto/req/target.sales.req.dto';
+import { UsersStatusApproveReqDto } from './dto/req/user.status.approve.req.dto';
+import { UsersStatusDeclineReqDto } from './dto/req/user.status.decline.req.dto';
 import { UserStatusQueryDto } from './dto/req/user.status.req.dto';
-import { UsersUpdateReqDto } from './dto/req/user.status.update.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
 import { AgencySalesStatResDto } from './dto/res/agency.sales.stat.dto';
@@ -65,18 +66,16 @@ export class AdminController {
 	@Patch('approve')
 	@ApiResponse({ type: UsersUpdateResultResDto })
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-	async approveUsers(@Body() body: UsersUpdateReqDto): Promise<UsersUpdateResultResDto> {
-		const { user_ids } = body;
-		return this.adminService.updateUserStatus(user_ids, 'approved');
+	async approveUsers(@Body() usersUpdateReqDto: UsersStatusApproveReqDto): Promise<UsersUpdateResultResDto> {
+		return this.adminService.updateUserStatus(usersUpdateReqDto, 'approved');
 	}
 
 	// 가입 거절(단일, 다중 사용자)
 	@Patch('decline')
 	@ApiResponse({ type: UsersUpdateResultResDto })
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-	async declineUsers(@Body() body: UsersUpdateReqDto): Promise<UsersUpdateResultResDto> {
-		const { user_ids } = body;
-		return this.adminService.updateUserStatus(user_ids, 'declined');
+	async declineUsers(@Body() usersUpdateReqDto: UsersStatusDeclineReqDto): Promise<UsersUpdateResultResDto> {
+		return this.adminService.updateUserStatus(usersUpdateReqDto, 'declined');
 	}
 
 	// 가입된 광고주 목록 조회
