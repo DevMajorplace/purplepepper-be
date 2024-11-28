@@ -9,11 +9,11 @@ export class FindUserPasswordReqDto {
 
 	@IsString()
 	@IsNotEmpty()
-	@ApiProperty({ description: '유저 이름', required: true })
+	@ApiProperty({ description: '담당자 이름', required: true })
 	public readonly manager_name: string;
 
 	@IsString()
 	@IsNotEmpty()
-	@ApiProperty({ description: '유저 연락처', required: true })
+	@ApiProperty({ description: '담당자 연락처', required: true })
 	public readonly manager_contact: string;
 }
