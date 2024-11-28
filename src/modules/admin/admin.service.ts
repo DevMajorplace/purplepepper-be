@@ -155,6 +155,15 @@ export class AdminService {
 			}
 		}
 
+		// agency의 경우 company_name 변경 가능
+		if (role === 'agency') {
+			const agencyReqDto = detailReqDto as AgencyDetailReqDto;
+
+			if (agencyReqDto.company_name) {
+				updateFields.company_name = agencyReqDto.company_name;
+			}
+		}
+
 		// 나머지 필드 업데이트 로직
 		Object.entries(detailReqDto).forEach(([key, value]) => {
 			if (
