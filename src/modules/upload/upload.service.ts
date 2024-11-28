@@ -38,7 +38,7 @@ export class UploadService {
 		if (filesSize.reduce((result, value) => result + value, 0) > this.MAXIMUM_FILES_SIZE)
 			throw new BadRequestException(ERROR_MESSAGE_ALL_FILES_SIZE_OVER);
 
-		const filesUrl: BoardFileResDto[] = [];
+		const responseObjects: BoardFileResDto[] = [];
 		await Promise.all(
 			files.map(async file => {
 				const key = this.createS3ObjectKey(file);
@@ -47,7 +47,7 @@ export class UploadService {
 					Key: key,
 					Body: file.buffer,
 					ContentType: file.mimetype,
-					ACL: 'public-read',
+					ACL: 'private',
 				});
 
 				try {
@@ -56,10 +56,10 @@ export class UploadService {
 					throw error;
 				}
 
-				filesUrl.push(new BoardFileResDto({ key: key }));
+				responseObjects.push(new BoardFileResDto({ key: key }));
 			}),
 		);
-		return filesUrl;
+		return responseObjects;
 	}
 
 	private createS3ObjectKey(file: Express.Multer.File): string {
