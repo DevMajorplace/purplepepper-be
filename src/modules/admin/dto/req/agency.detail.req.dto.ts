@@ -2,6 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class AgencyDetailReqDto {
+	@IsString()
+	@IsOptional()
+	@ApiProperty({ description: '총판명', required: false })
+	public readonly company_name?: string;
+
 	@IsBoolean()
 	@IsOptional()
 	@ApiProperty({ description: '총판 사용여부', required: false })
