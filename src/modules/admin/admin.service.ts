@@ -16,7 +16,6 @@ import {
 	ERROR_MESSAGE_INVALID_STATUS_LOGS,
 	ERROR_MESSAGE_INVALID_TARGET_SALES,
 	ERROR_MESSAGE_INVALID_USER,
-	ERROR_MESSAGE_NO_CASH_LOG_USSER,
 	ERROR_MESSAGE_NO_REJECTION_REASON,
 	ERROR_MESSAGE_NO_USER_IDS,
 	ERROR_MESSAGE_PARENT_NOT_FOUND,
@@ -62,6 +61,7 @@ export class AdminService {
 			user_id: userId,
 			status: 'approved',
 			role: role,
+			is_active: true, //setActive 대신 이쪽에서 활용
 		};
 
 		const user = await this.userModel.findOne(query).exec();
@@ -74,6 +74,10 @@ export class AdminService {
 	// 단일 상세 조회 함수
 	async getDetail(userId: string, role: 'agency' | 'client'): Promise<AgencyDetailResDto | ClientDetailResDto> {
 		const user = await this.findUserById(userId, role);
+
+		if (!user) {
+			throw new BadRequestException(ERROR_MESSAGE_INVALID_USER);
+		}
 
 		const detailData = {
 			company_name: user.company_name,
@@ -106,32 +110,34 @@ export class AdminService {
 		// 아이디 공백 검사
 		isNotEmptyUserId(userId);
 
-		const user = await this.userModel.findOne({ user_id: userId });
+		// 활성 사용자와 역할 확인
+		const user = await this.userModel.findOne({ user_id: userId, is_active: true }).exec();
 
-		// 역할 확인
+		if (!user) {
+			throw new BadRequestException(ERROR_MESSAGE_INVALID_USER);
+		}
+
 		if (user.role !== role) {
 			throw new BadRequestException(ERROR_MESSAGE_INVALID_ROLE);
 		}
 
-		// 업데이트 대상 유저를 가져오기
-		const userToUpdate = await this.userModel.findOne({ user_id: userId });
-		if (!userToUpdate) {
-			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
-		}
-
 		const updateFields: any = {};
+
 		// 비밀번호 변경 로직 (기존 값과 비교)
 		if (detailReqDto.password) {
 			validatePassword(detailReqDto.password); // 비밀번호 정책 검사
-
-			const isSamePassword = await bcrypt.compare(detailReqDto.password, user.password);
-			if (!isSamePassword) {
-				updateFields.password = await bcrypt.hash(detailReqDto.password, 10); // 비밀번호 해싱
+			if (!user.password || !user.password.startsWith('$2b$')) {
+				updateFields.password = await bcrypt.hash(detailReqDto.password, 10);
+			} else {
+				const isSamePassword = await bcrypt.compare(detailReqDto.password, user.password);
+				if (!isSamePassword) {
+					updateFields.password = await bcrypt.hash(detailReqDto.password, 10); // 비밀번호 해싱
+				}
 			}
 		}
 
 		// parent_id를 기준으로 parent_ids 갱신
-		if (userToUpdate.role === 'client') {
+		if (role === 'client') {
 			const clientReqDto = detailReqDto as ClientDetailReqDto;
 
 			if (clientReqDto.parent_id) {
@@ -181,14 +187,21 @@ export class AdminService {
 	// 가입 대기/거절 회원 조회
 	async findUsersByStatus(
 		status: 'pending' | 'declined',
-		page: number,
-		pageSize: number,
+		page: number = 1,
+		pageSize: number = 15,
 	): Promise<PaginationResult<UserStatusResDto>> {
 		// 검색 조건 설정
 		const query = { status };
 
+		// 활성 사용자 확인
+		const activeUsers = await setActiveQuery(this.userModel);
+		const activeUserIds = activeUsers.map(user => user._id.toString());
+
 		// 페이지네이션 호출
-		const result = await paginate(this.userModel, page, pageSize, query);
+		const result = await paginate(this.userModel, page, pageSize, {
+			...query,
+			_id: { $in: activeUserIds }, // 활성 회원만 필터링
+		});
 
 		// 결과 데이터 형식을 UserStatusResDto로 변환
 		return {
@@ -209,9 +222,22 @@ export class AdminService {
 		let updatedUsers: UserStatusUpdateResDto[] = []; // 성공적으로 업데이트된 사용자 목록
 
 		try {
-			const users = await this.userModel.find({ user_id: { $in: idsArray } }).exec();
+			// 활성 사용자 확인
+			const activeUsers = await setActiveQuery(this.userModel);
+			const activeUserIds = activeUsers.map(user => user.user_id);
+
+			// 입력된 ID 중 활성 사용자만 필터링
+			const validIds = idsArray.filter(id => activeUserIds.includes(id));
+			const invalidIds = idsArray.filter(id => !activeUserIds.includes(id));
+
+			// 비활성 사용자 ID를 실패 목록에 추가
+			invalidIds.forEach(id => {
+				failed.push(new FailedUserDto(id, ERROR_MESSAGE_INVALID_USER));
+			});
+
+			const users = await this.userModel.find({ user_id: { $in: validIds } }).exec();
 			const foundUserIds = users.map(user => user.user_id);
-			const missingUserIds = idsArray.filter(id => !foundUserIds.includes(id));
+			const missingUserIds = validIds.filter(id => !foundUserIds.includes(id));
 
 			missingUserIds.forEach(id => {
 				failed.push(new FailedUserDto(id, ERROR_MESSAGE_USER_NOT_FOUND));
@@ -249,8 +275,8 @@ export class AdminService {
 
 	// 가입된 광고주 조건/전체 조회
 	async getAllClients(
-		page: number,
-		pageSize: number,
+		page: number = 1,
+		pageSize: number = 15,
 		clientListReqDto?: ClientListReqDto,
 	): Promise<{
 		data: ClientListResDto[];
@@ -261,6 +287,11 @@ export class AdminService {
 	}> {
 		// 기본 검색 조건 + 업체명 검색
 		const query = setBaseQuery('client', clientListReqDto);
+
+		// 활성 사용자 확인
+		const activeUsers = await setActiveQuery(this.userModel);
+		const activeUserIds = activeUsers.map(user => user._id.toString());
+		query._id = { $in: activeUserIds }; // 활성 사용자만 필터링
 
 		// 가입승인일 필터링
 		setApprovedDateQuery(clientListReqDto, query);
@@ -338,8 +369,8 @@ export class AdminService {
 
 	// 가입된 총판 조건/전체 조회
 	async getAllAgencies(
-		page: number,
-		pageSize: number,
+		page: number = 1,
+		pageSize: number = 15,
 		agencyListReqDto?: AgencyListReqDto,
 	): Promise<{
 		data: AgencyListResDto[];
@@ -353,6 +384,11 @@ export class AdminService {
 
 		// 가입승인일 필터링
 		setApprovedDateQuery(agencyListReqDto, query);
+
+		// 활성 사용자 확인
+		const activeUsers = await setActiveQuery(this.userModel);
+		const activeUserIds = activeUsers.map(user => user._id.toString());
+		query._id = { $in: activeUserIds };
 
 		// 페이지네이션 호출
 		const result = await paginate(this.userModel, page, pageSize, query);
@@ -423,55 +459,60 @@ export class AdminService {
 		page: number,
 		pageSize: number,
 	): Promise<{
-		data: CashRequestListResDto[];
-		missingUserIds: string[];
+		success: CashRequestListResDto[];
+		failed: { cashLogIdx: string; reason: string }[];
 		totalItems: number;
 		totalPages: number;
 		currentPage: number;
 		pageSize: number;
 	}> {
+		// 결과를 저장할 배열
+		const success: CashRequestListResDto[] = [];
+		const failed: { cashLogIdx: string; reason: string }[] = [];
+
 		// 페이지네이션 호출
 		const cashLogs = await paginate(this.cashLogModel, page, pageSize);
 
-		// 캐시로그배열에서 userIdx 추출
-		const userIdxs = cashLogs.data.map(cash => cash.user_idx);
+		// 활성 사용자 조회
+		const activeUsers = await setActiveQuery(this.userModel);
+		const activeUserMap = new Map(activeUsers.map(user => [user._id.toString(), user]));
 
-		// userIds로 사용자 정보 조회
-		const users = await this.userModel.find({ _id: { $in: userIdxs } }).exec();
-		const userMap = new Map(users.map(user => [user._id.toString(), user]));
+		// 캐시로그 순회하여 성공 및 실패 분류
+		cashLogs.data.forEach(cashLog => {
+			const user = activeUserMap.get(cashLog.user_idx.toString());
 
-		// 없는 사용자 ID 추출
-		const missingUserIdxs = userIdxs.filter(userIdx => !userMap.has(userIdx.toString()));
-
-		// 없는 사용자 ID에서 user_id 값만 추출
-		const missingUserIds = cashLogs.data
-			.filter(cashLog => missingUserIdxs.includes(cashLog.user_idx))
-			.map(cashLog => cashLog.user_idx);
-
-		const data = cashLogs.data.map(cashLog => {
-			const user = userMap.get(cashLog.user_idx.toString());
-
-			return new CashRequestListResDto({
-				cash_log_idx: cashLog._id.toString(),
-				user_idx: cashLog.user_idx,
-				company_name: user.company_name,
-				depositor: cashLog.depositor,
-				amount: cashLog.amount,
-				created_at: cashLog.created_at,
-				status: cashLog.status,
-				processed_at:
-					cashLog.status === CashLogStatus.APPROVED
-						? cashLog.approved_at
-						: [CashLogStatus.REJECTED, CashLogStatus.ERROR].includes(cashLog.status)
-							? cashLog.declined_at
-							: null, // 처리 시점 설정
-				rejection_reason: cashLog.rejection_reason || '', // 기본값 빈 문자열
-			});
+			if (!user) {
+				// 활성 사용자가 아닌 경우 실패 처리
+				failed.push({
+					cashLogIdx: cashLog._id.toString(),
+					reason: `${ERROR_MESSAGE_INVALID_USER}: ${cashLog.user_idx}`,
+				});
+			} else {
+				// 활성 사용자일 경우 성공 처리
+				success.push(
+					new CashRequestListResDto({
+						cash_log_idx: cashLog._id.toString(),
+						user_idx: cashLog.user_idx,
+						company_name: user.company_name,
+						depositor: cashLog.depositor,
+						amount: cashLog.amount,
+						created_at: cashLog.created_at,
+						status: cashLog.status,
+						processed_at:
+							cashLog.status === CashLogStatus.APPROVED
+								? cashLog.approved_at
+								: [CashLogStatus.REJECTED, CashLogStatus.ERROR].includes(cashLog.status)
+									? cashLog.declined_at
+									: null, // 처리 시점 설정
+						rejection_reason: cashLog.rejection_reason || '', // 기본값 빈 문자열
+					}),
+				);
+			}
 		});
 
 		return {
-			data,
-			missingUserIds: missingUserIds,
+			success,
+			failed,
 			totalItems: cashLogs.totalItems,
 			totalPages: cashLogs.totalPages,
 			currentPage: cashLogs.currentPage,
@@ -505,6 +546,19 @@ export class AdminService {
 				failed.push({ cashLogIdx: id, reason: ERROR_MESSAGE_CASH_LOGS_NOT_FOUND(id) });
 			});
 
+			// 활성 사용자 조회
+			const activeUsers = await setActiveQuery(this.userModel);
+			const activeUserMap = new Map(activeUsers.map(user => [user._id.toString(), user]));
+
+			// 활성 사용자만 필터링
+			const logsWithInactiveUsers = cashLogs.filter(cashLog => !activeUserMap.has(cashLog.user_idx.toString()));
+			logsWithInactiveUsers.forEach(log => {
+				failed.push({
+					cashLogIdx: log._id.toString(),
+					reason: `${ERROR_MESSAGE_INVALID_USER}: ${log.user_idx}`,
+				});
+			});
+
 			// 대기 상태가 아닌 로그 실패 처리
 			const invalidLogs = cashLogs.filter(cashLog => cashLog.status !== CashLogStatus.PENDING);
 			invalidLogs.forEach(log => {
@@ -535,7 +589,8 @@ export class AdminService {
 			const logsToUpdate = cashLogs.filter(
 				cashLog =>
 					cashLog.status === CashLogStatus.PENDING && // 대기 상태일 때만 승인/거절 가능
-					cashLog.status !== status, // 이미 요청된 상태와 동일하지 않은 경우만
+					cashLog.status !== status && // 이미 요청된 상태와 동일하지 않은 경우만
+					activeUserMap.has(cashLog.user_idx.toString()), // 활성 사용자만 처리
 			);
 
 			if (logsToUpdate.length > 0) {
@@ -548,15 +603,10 @@ export class AdminService {
 				await Promise.all(
 					logsToUpdate.map(async cashLog => {
 						try {
-							const user = await this.userModel.findById(cashLog.user_idx).exec();
+							const user = activeUserMap.get(cashLog.user_idx.toString());
 							if (user) {
 								user.cash += cashLog.amount;
 								await user.save();
-							} else {
-								failed.push({
-									cashLogIdx: cashLog._id.toString(),
-									reason: ERROR_MESSAGE_NO_CASH_LOG_USSER(cashLog.user_idx),
-								});
 							}
 						} catch (error) {
 							failed.push({
@@ -595,7 +645,7 @@ export class AdminService {
 		// 입력된 모든 user_id 추출
 		const userIds = targets.map(target => target.user_id);
 
-		// is_active 유저 조회 (setActiveQuery 사용)
+		// 활성 사용자 확인
 		const activeUsers = await setActiveQuery(this.userModel);
 		const activeUserIds = activeUsers.map(user => user.user_id);
 
@@ -673,7 +723,7 @@ export class AdminService {
 		// monthlySales에서 user_id 추출하기
 		const userIds = monthlySales.map(sale => sale.user_id);
 
-		// is_active 유저 조회
+		// 활성 사용자 확인
 		const activeUsers = await setActiveQuery(this.userModel);
 
 		// user_id로 userModel 조회해서 총판 정보들만 추리기

@@ -37,8 +37,6 @@ export class BoardController {
 		},
 	})
 	async getBoardsList(
-		@Query('page') page: number,
-		@Query('pageSize') pageSize: number,
 		@Query() boardsListReqDto: BoardListReqDto,
 		@Req() req: Request,
 	): Promise<{
@@ -49,7 +47,7 @@ export class BoardController {
 		pageSize: number;
 	}> {
 		const { category, title } = boardsListReqDto;
-		return this.boardService.getAllBoards(page, pageSize, category, title, req);
+		return this.boardService.getAllBoards(boardsListReqDto.page, boardsListReqDto.pageSize, category, title, req);
 	}
 
 	@Get(':id')

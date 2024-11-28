@@ -1,12 +1,14 @@
-import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { ClientListReqDto } from '../admin/dto/req/client.list.req.dto';
-import { ClientListResDto } from '../admin/dto/res/client.list.res.dto';
+import { Controller, Get, Query, Req, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import { ApiBearerAuth, ApiExtraModels, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
+// import { ClientListReqDto } from '../admin/dto/req/client.list.req.dto';
+// import { ClientListResDto } from '../admin/dto/res/client.list.res.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { UserRoles } from '../auth/types/role.decorator';
 import { Role } from '../auth/types/role.enum';
 import { AgencyService } from './agency.service';
+import { ClientListReqDto } from './dto/req/client.list.req.dto';
+import { ClientListResDto } from './dto/res/client.list.res.dto';
 
 @ApiTags('Agency')
 @ApiBearerAuth('access-token')
@@ -17,11 +19,25 @@ export class AgencyController {
 
 	// 가입된 광고주 목록 조회
 	@Get('clients')
-	@ApiResponse({ type: ClientListResDto })
+	@ApiExtraModels(ClientListResDto)
+	@ApiResponse({
+		schema: {
+			type: 'object',
+			properties: {
+				data: {
+					type: 'array',
+					items: { $ref: getSchemaPath(ClientListResDto) },
+				},
+				totalItems: { type: 'number' },
+				totalPages: { type: 'number' },
+				currentPage: { type: 'number' },
+				pageSize: { type: 'number' },
+			},
+		},
+	})
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	@UserRoles(Role.Agency)
 	async getAllClients(
-		@Query('page') page: number,
-		@Query('pageSize') pageSize: number,
 		@Query() clientListReqDto: ClientListReqDto,
 		@Req() req: Request,
 	): Promise<{
@@ -31,6 +47,6 @@ export class AgencyController {
 		currentPage: number;
 		pageSize: number;
 	}> {
-		return this.agencyService.getAllClients(page, pageSize, clientListReqDto, req);
+		return this.agencyService.getAllClients(clientListReqDto.page, clientListReqDto.pageSize, clientListReqDto, req);
 	}
 }
