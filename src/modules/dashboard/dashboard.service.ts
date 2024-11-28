@@ -66,10 +66,15 @@ export class DashboardService {
 	}
 
 	// 최신 공지사항 제목 조회
-	async getLatestNoticeTitle(roles: string[]): Promise<NoticeResDto> {
+	async getLatestNoticeTitle(req: any): Promise<NoticeResDto> {
+		if (!req.user || !req.user.role) {
+			throw new ForbiddenException(ERROR_MESSAGE_PERMISSION_DENIED);
+		}
+		const role = req.user.role;
+
 		const latestNotice = await this.boardModel
 			.findOne({
-				visible: { $in: roles },
+				visible: { $in: role },
 				deleted_at: null, // 삭제되지 않은 공지사항만 조회
 			})
 			.sort({ created_at: -1 })

@@ -54,6 +54,9 @@ export class User extends Document {
 	@Prop({ enum: ['approved', 'pending', 'declined'], required: true })
 	status: string;
 
+	@Prop({ default: null })
+	rejection_reason: string;
+
 	@Prop({ default: 0 })
 	login_failed: number;
 
@@ -61,7 +64,7 @@ export class User extends Document {
 	approved_at: Date;
 
 	@Prop()
-	declined_at: Date;
+	decliend_at: Date;
 
 	@Prop()
 	deleted_at: Date;

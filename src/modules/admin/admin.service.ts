@@ -33,6 +33,8 @@ import { CashRequestListReqDto } from './dto/req/cash.request.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
 import { TargetSalesReqDto } from './dto/req/target.sales.req.dto';
+import { UsersStatusApproveReqDto } from './dto/req/user.status.approve.req.dto';
+import { UsersStatusDeclineReqDto } from './dto/req/user.status.decline.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
 import { AgencySalesStatResDto } from './dto/res/agency.sales.stat.dto';
@@ -220,13 +222,24 @@ export class AdminService {
 	}
 
 	// 가입 상태 업데이트(단일, 다중 사용자 승인 거절)
-	async updateUserStatus(userIds: string[], status: 'approved' | 'declined'): Promise<UsersUpdateResultResDto> {
-		// 입력된 userIds가 단일 문자열일 경우 배열로 변환
-		const idsArray = typeof userIds === 'string' ? [userIds] : userIds;
+	async updateUserStatus(
+		usersUpdateReqDto: UsersStatusApproveReqDto | UsersStatusDeclineReqDto,
+		status: 'approved' | 'declined',
+	): Promise<UsersUpdateResultResDto> {
+		const { user_ids: idsArray } = usersUpdateReqDto;
 
-		if (idsArray.length === 0) {
+		if (!idsArray || idsArray.length === 0) {
 			throw new BadRequestException(ERROR_MESSAGE_NO_USER_IDS);
 		}
+
+		// 거절 상태에서만 rejection_reason을 검사
+		if (status === 'declined') {
+			const { rejection_reason } = usersUpdateReqDto as UsersStatusDeclineReqDto;
+			if (!rejection_reason) {
+				throw new BadRequestException(ERROR_MESSAGE_NO_REJECTION_REASON);
+			}
+		}
+
 		const failed: FailedUserDto[] = []; // 실패한 사용자 목록 저장
 		let updatedUsers: UserStatusUpdateResDto[] = []; // 성공적으로 업데이트된 사용자 목록
 
@@ -264,7 +277,10 @@ export class AdminService {
 				status,
 				approved_at: status === 'approved' ? new Date() : null,
 				declined_at: status === 'declined' ? new Date() : null,
+				rejection_reason:
+					status === 'declined' ? (usersUpdateReqDto as UsersStatusDeclineReqDto).rejection_reason : null,
 			};
+
 			if (usersToUpdate.length > 0) {
 				const userIdsToUpdate = usersToUpdate.map(user => user.user_id);
 				await this.userModel.updateMany({ user_id: { $in: userIdsToUpdate } }, updateFields).exec();
