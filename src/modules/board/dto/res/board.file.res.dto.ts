@@ -4,6 +4,10 @@ import { IsNotEmpty, IsString } from 'class-validator';
 export class BoardFileResDto {
 	@IsString()
 	@IsNotEmpty()
-	@ApiProperty({ description: '파일 저장된 URL', type: String })
-	public readonly url: string;
+	@ApiProperty({ description: '파일에 대한 Key', type: String })
+	public readonly key: string;
+
+	constructor({ key }: { key: string }) {
+		this.key = key;
+	}
 }

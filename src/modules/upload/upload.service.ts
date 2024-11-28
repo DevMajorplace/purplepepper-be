@@ -41,7 +41,7 @@ export class UploadService {
 		const filesUrl: BoardFileResDto[] = [];
 		await Promise.all(
 			files.map(async file => {
-				const { key, url } = this.createS3ObjectKey(file);
+				const key = this.createS3ObjectKey(file);
 				const command = new PutObjectCommand({
 					Bucket: this.BUCKET_NAME,
 					Key: key,
@@ -56,18 +56,16 @@ export class UploadService {
 					throw error;
 				}
 
-				filesUrl.push({ url: url });
+				filesUrl.push(new BoardFileResDto({ key: key }));
 			}),
 		);
 		return filesUrl;
 	}
 
-	private createS3ObjectKey(file: Express.Multer.File): { key: string; url: string } {
+	private createS3ObjectKey(file: Express.Multer.File): string {
 		const ext = extname(file.originalname);
 		const base = basename(file.originalname, ext);
 		const key = `attach/${base}_${new Date().toISOString()}${ext}`.replace(/ /g, '');
-		const url = `https://${this.BUCKET_NAME}.s3.${this.REGION_NAME}.amazonaws.com/${key}`;
-
-		return { key, url };
+		return key;
 	}
 }
