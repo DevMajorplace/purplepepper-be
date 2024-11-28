@@ -29,9 +29,13 @@ import { LoginLog } from '../../db/schema/login-log.schema';
 import { User } from '../../db/schema/user.schema';
 import { AuthService } from '../auth/auth.service';
 import { FindUserDataReqDto } from './dto/req/find.user.data.req.dto';
+import { FindUserPasswordReqDto } from './dto/req/find.user.password.req.dto';
 import { LoginReqDto } from './dto/req/login.req.dto';
 import { SignUpReqDto } from './dto/req/signup.req.dto';
 import { UserDetailReqDto } from './dto/req/user.detail.req.dto';
+import { FindPasswordResDto } from './dto/res/find.password.res.dto';
+import { FindUserResDto } from './dto/res/find.user.res.dto';
+import { ResetPasswordResDto } from './dto/res/reset.password.res.dto';
 import { SignUpResDto } from './dto/res/signup.res.dto';
 import { UserDetailResDto } from './dto/res/user.detail.res.dto';
 import { UserLoginResDto } from './dto/res/user.login.res.dto';
@@ -255,7 +259,7 @@ export class UserService {
 		return new UserDetailResDto(updatedUser, role);
 	}
 
-	async findUserId(findUserDataReqDto: FindUserDataReqDto): Promise<{ userId: string }> {
+	async findUserId(findUserDataReqDto: FindUserDataReqDto): Promise<FindUserResDto> {
 		const { manager_name, manager_contact } = findUserDataReqDto;
 		if (!manager_name || !manager_contact) {
 			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
@@ -264,11 +268,11 @@ export class UserService {
 		const user = await this.userModel.findOne({ manager_name: manager_name, manager_contact: manager_contact }).exec();
 		if (!user) throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
 
-		return { userId: user.user_id };
+		return new FindUserResDto({ user_id: user.user_id });
 	}
 
-	async findUserPassword(findUserDataReqDto: FindUserDataReqDto): Promise<{ resetToken: string }> {
-		const { user_id, manager_name, manager_contact } = findUserDataReqDto;
+	async findUserPassword(findUserPasswordReqDto: FindUserPasswordReqDto): Promise<FindPasswordResDto> {
+		const { user_id, manager_name, manager_contact } = findUserPasswordReqDto;
 		if (!user_id || !manager_name || !manager_contact) {
 			throw new NotFoundException(ERROR_MESSAGE_USER_NOT_FOUND);
 		}
@@ -279,10 +283,11 @@ export class UserService {
 		}
 
 		const payload = { userId: user.user_id, resetToken: true };
-		return { resetToken: this.authService.createToken(payload, 'reset') };
+		const resetToken = this.authService.createToken(payload, 'reset');
+		return new FindPasswordResDto({ user_id: user.user_id, reset_token: resetToken });
 	}
 
-	async resetUserPassword(@Req() req: Request, password: string): Promise<{ status: string }> {
+	async resetUserPassword(@Req() req: Request, password: string): Promise<ResetPasswordResDto> {
 		validatePassword(password);
 		const token = req.cookies?.reset_token;
 		if (!token) throw new BadRequestException(ERROR_MESSAGE_NO_TOKEN);
@@ -299,8 +304,11 @@ export class UserService {
 		const hashedPassword = await bcrypt.hash(password, 10).catch(() => {
 			throw new InternalServerErrorException(ERROR_MESSAGE_HASH_FAILED);
 		});
-		await this.userModel.updateOne({ _id: user._id }, { $set: { password: hashedPassword } });
 
-		return { status: 'success' };
+		await this.userModel.updateOne({ _id: user._id }, { $set: { password: hashedPassword } }).catch(() => {
+			return new ResetPasswordResDto({ user_id: userId, status: false });
+		});
+
+		return new ResetPasswordResDto({ user_id: userId, status: true });
 	}
 }
