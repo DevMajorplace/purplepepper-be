@@ -193,7 +193,8 @@ export class AdminController {
 	})
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 	async getChargeRequest(@Query() paginationQueryDto: PaginationQueryDto): Promise<{
-		data: CashRequestListResDto[];
+		success: CashRequestListResDto[];
+		failed: { cashLogIdx: string; reason: string }[];
 		totalItems: number;
 		totalPages: number;
 		currentPage: number;
