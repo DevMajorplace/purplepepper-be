@@ -15,6 +15,11 @@ export const ERROR_MESSAGE_USERID_POLICY = '아이디는 6~12자의 영문, 숫�
 // Boards
 export const ERROR_MESSAGE_BOARD_NOT_FOUND = '해당 게시글을 찾을 수 없습니다.';
 
+// File Upload
+export const ERROR_MESSAGE_FILE_NOT_FOUND = '입력된 파일이 없습니다.';
+export const ERROR_MESSAGE_ARRAY_SIZE_OVER = '파일은 최대 5개까지 첨부할 수 있습니다.';
+export const ERROR_MESSAGE_ALL_FILES_SIZE_OVER = '첨부 파일들의 최대 용량은 모두 합쳐 50MB까지입니다.';
+
 // Auth
 export const ERROR_MESSAGE_INVALID_TOKEN = '유효한 토큰이 아닙니다.';
 export const ERROR_MESSAGE_EXPIRED_TOKEN = '기간이 만료된 토큰입니다.';

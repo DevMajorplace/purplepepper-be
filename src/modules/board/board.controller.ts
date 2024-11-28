@@ -8,20 +8,26 @@ import {
 	Put,
 	Query,
 	Req,
+	UploadedFiles,
 	UseGuards,
+	UseInterceptors,
 	UsePipes,
 	ValidationPipe,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiExtraModels, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiBody, ApiExtraModels, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
 import { Board } from '../../db/schema/board.schema';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
 import { UserRoles } from '../auth/types/role.decorator';
 import { Role } from '../auth/types/role.enum';
+import { UploadService } from '../upload/upload.service';
 import { BoardService } from './board.service';
+import { BoardFileReqDto } from './dto/req/board.file.req.dto';
 import { BoardListReqDto } from './dto/req/board.list.req.dto';
 import { BoardReqDto } from './dto/req/board.req.dto';
 import { BoardDetailResDto } from './dto/res/board.detail.res.dto';
+import { BoardFileResDto } from './dto/res/board.file.res.dto';
 import { BoardItemDto } from './dto/res/board.item.dto';
 
 @Controller('boards')
@@ -29,7 +35,10 @@ import { BoardItemDto } from './dto/res/board.item.dto';
 @ApiBearerAuth('access-token')
 @UseGuards(AuthGuard, RoleGuard)
 export class BoardController {
-	constructor(private readonly boardService: BoardService) {}
+	constructor(
+		private readonly boardService: BoardService,
+		private readonly uploadService: UploadService,
+	) {}
 
 	@Get()
 	@ApiExtraModels(BoardItemDto)
@@ -92,5 +101,14 @@ export class BoardController {
 	@ApiResponse({ type: BoardDetailResDto })
 	async deleteBoard(@Param('id') id: string): Promise<BoardDetailResDto> {
 		return this.boardService.deleteBoard(id);
+	}
+
+	@Post('file')
+	@UserRoles(Role.Admin)
+	@ApiBody({ type: BoardFileReqDto, required: true })
+	@ApiResponse({ type: BoardFileResDto, isArray: true })
+	@UseInterceptors(FilesInterceptor('files'))
+	async uploadFile(@UploadedFiles() files: Express.Multer.File[]): Promise<BoardFileResDto[]> {
+		return this.uploadService.uploadToS3(files);
 	}
 }
