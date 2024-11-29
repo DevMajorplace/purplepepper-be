@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -28,6 +28,14 @@ async function bootstrap() {
 		methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
 		credentials: true, // 쿠키 및 인증 정보 허용
 	});
+
+	app.useGlobalPipes(
+		new ValidationPipe({
+			transform: true, // DTO 변환 활성화
+			whitelist: true, // 허용된 필드만 허용
+			forbidNonWhitelisted: true, // 허용되지 않은 필드는 에러 처리
+		}),
+	);
 
 	// 쿠키 파서 추가
 	app.use(cookieParser());

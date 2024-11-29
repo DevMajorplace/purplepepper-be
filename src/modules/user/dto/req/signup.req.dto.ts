@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsArray, IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { Role } from 'src/modules/auth/types/role.enum';
 
@@ -65,6 +66,7 @@ export class SignUpReqDto {
 
 	@IsString()
 	@IsOptional()
+	@Transform(({ obj }) => (obj.role === 'client' ? undefined : obj.memo))
 	@ApiProperty({ description: '관리자 메모' })
 	public readonly memo: string;
 }
