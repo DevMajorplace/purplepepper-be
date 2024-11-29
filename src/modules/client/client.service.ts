@@ -1,7 +1,9 @@
-import { BadRequestException, Injectable, Req } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Req } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { ERROR_MESSAGE_INVALID_AMOUNT } from 'src/common/constants/error-messages';
+import { ERROR_MESSAGE_INVALID_AMOUNT, ERROR_MESSAGE_INVALID_USER } from 'src/common/constants/error-messages';
+import { setActiveQuery } from 'src/common/utils/filter.util';
+import { validateNotEmptyFields } from 'src/common/utils/validation.util';
 import { Advertisement } from '../../db/schema/advertisement.schema';
 import { CashLog } from '../../db/schema/cash-log.schema';
 import { User } from '../../db/schema/user.schema';
@@ -21,11 +23,19 @@ export class ClientService {
 	// 캐시 충전
 	async chargeCash(@Req() req: any, chargeCashReqDto: ChargeCashReqDto): Promise<ChargeCashResDto> {
 		const userId = req.user.userId;
+		// 활성 사용자 조회
+		const activeUsers = await setActiveQuery(this.userModel);
+		const activeUser = activeUsers.find(user => user.user_id === userId);
 
-		const user = await this.userModel.findOne({ user_id: userId }).exec();
+		// 활성 사용자 확인
+		if (!activeUser) {
+			throw new BadRequestException(ERROR_MESSAGE_INVALID_USER);
+		}
 
 		const amount = chargeCashReqDto.amount;
 		const depositor = chargeCashReqDto.depositor;
+
+		validateNotEmptyFields(chargeCashReqDto.depositor);
 
 		// 충전 금액은 오만원 이상 천만원이하
 		if (amount < 50000 || amount > 10000000) {
@@ -34,7 +44,7 @@ export class ClientService {
 
 		// 캐시로그 생성
 		const cashLog = await this.cashLogModel.create({
-			user_idx: user._id,
+			user_idx: activeUser._id,
 			type: CashLogType.DEPOSIT,
 			category: CashLogCategory.DEPOSIT_PENDING,
 			depositor: depositor,
@@ -49,10 +59,20 @@ export class ClientService {
 	async getCashLogs(req: any, pageType: 'usage' | 'deposit'): Promise<CashLogsListResDto> {
 		const userId = req.user.userId;
 
+		// 활성 사용자 조회
+		const activeUsers = await setActiveQuery(this.userModel);
+		const activeUser = activeUsers.find(user => user.user_id === userId);
+
+		if (!activeUser) {
+			throw new ForbiddenException(ERROR_MESSAGE_INVALID_USER);
+		}
+
 		// 사용자 정보 가져오기
 		const user = await this.userModel.findOne({ user_id: userId }).exec();
-		if (!user) throw new Error('사용자를 찾을 수 없습니다.');
-
+		if (!user) {
+			// 사용자가 없으면 빈 데이터 반환
+			return new CashLogsListResDto(0, [], pageType === 'usage');
+		}
 		const currentAmount = user.cash;
 
 		// 캐시 로그 가져오기

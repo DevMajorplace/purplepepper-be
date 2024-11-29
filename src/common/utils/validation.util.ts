@@ -2,8 +2,8 @@ import { BadRequestException } from '@nestjs/common';
 import { Model } from 'mongoose';
 import { User } from 'src/db/schema/user.schema';
 import {
+	ERROR_MESSAGE_INVALID_VALUE,
 	ERROR_MESSAGE_PASSWORD_POLICY,
-	ERROR_MESSAGE_USER_ID_MISSING,
 	ERROR_MESSAGE_USERID_POLICY,
 } from '../constants/error-messages';
 
@@ -18,10 +18,10 @@ export function validatePassword(password: string): void {
 	}
 }
 
-// 유저아이디 공백 검사 함수
-export function isNotEmptyUserId(userId: string): void {
-	if (!userId || userId.trim() === '') {
-		throw new BadRequestException(ERROR_MESSAGE_USER_ID_MISSING);
+// 필드 유효성 검사 함수 (공백)
+export function validateNotEmptyFields(field: string): void {
+	if (!field || field.trim() === '') {
+		throw new BadRequestException(ERROR_MESSAGE_INVALID_VALUE);
 	}
 }
 

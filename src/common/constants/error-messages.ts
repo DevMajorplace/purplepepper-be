@@ -1,3 +1,6 @@
+// General
+export const ERROR_MESSAGE_INVALID_VALUE = '올바른 값을 입력해주세요.';
+
 // Users
 export const ERROR_MESSAGE_DUPLICATE_ID = '이미 존재하는 아이디입니다.';
 export const ERROR_MESSAGE_HASH_FAILED = '비밀번호 해싱에 실패했습니다.';
