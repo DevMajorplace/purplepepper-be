@@ -17,7 +17,7 @@ export class Board extends Document {
 	visible: Role[]; // ['admin', 'agency', 'client']
 
 	@Prop({ type: [String], default: [] })
-	file_urls: string[];
+	file_keys: string[];
 
 	@Prop({ type: Date })
 	deleted_at?: Date;

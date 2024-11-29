@@ -27,6 +27,6 @@ export class BoardReqDto {
 	@IsArray()
 	@IsString({ each: true })
 	@IsOptional()
-	@ApiProperty({ description: '파일 url', required: false })
-	public readonly file_urls?: string[];
+	@ApiProperty({ description: '파일의 Key', required: false })
+	public readonly file_keys?: string[];
 }

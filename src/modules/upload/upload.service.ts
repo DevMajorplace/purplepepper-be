@@ -1,4 +1,5 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { basename, extname } from 'path';
@@ -18,15 +19,14 @@ export class UploadService {
 	private readonly REGION_NAME: string;
 
 	constructor(private readonly configService: ConfigService) {
+		const accessKeyId = this.configService.get<string>('AWS_S3_ACCESS_KEY');
+		const secretAccessKey = this.configService.get<string>('AWS_S3_SECRET_KEY');
 		this.REGION_NAME = this.configService.get<string>('AWS_S3_REGION');
 		this.BUCKET_NAME = this.configService.get<string>('AWS_S3_BUCKET');
 		this.MAXIMUM_FILES_SIZE = 50 * 1024 * 1024;
 		this.MAXIMUM_FILES_ARRAY_SIZE = 5;
 		this.s3client = new S3Client({
-			credentials: {
-				accessKeyId: this.configService.get<string>('AWS_S3_ACCESS_KEY'),
-				secretAccessKey: this.configService.get<string>('AWS_S3_SECRET_KEY'),
-			},
+			credentials: { accessKeyId, secretAccessKey },
 			region: this.REGION_NAME,
 		});
 	}
@@ -60,6 +60,15 @@ export class UploadService {
 			}),
 		);
 		return responseObjects;
+	}
+
+	async getPresignedURL(keys: string[]): Promise<string[]> {
+		return Promise.all(
+			keys.map(async key => {
+				const command = new GetObjectCommand({ Bucket: this.BUCKET_NAME, Key: key });
+				return await getSignedUrl(this.s3client, command, { expiresIn: 600 });
+			}),
+		);
 	}
 
 	private createS3ObjectKey(file: Express.Multer.File): string {
