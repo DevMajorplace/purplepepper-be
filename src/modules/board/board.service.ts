@@ -58,7 +58,7 @@ export class BoardService {
 	//게시글 조회
 	async getBoardById(id: string, @Req() req: any): Promise<BoardDetailResDto> {
 		const board = await this.boardModel.findById(id).exec();
-		if (!board) {
+		if (!board || board.deleted_at) {
 			throw new NotFoundException(ERROR_MESSAGE_BOARD_NOT_FOUND);
 		}
 
@@ -118,7 +118,7 @@ export class BoardService {
 
 	//삭제
 	async deleteBoard(id: string): Promise<BoardDetailResDto> {
-		const deletedBoard = await this.boardModel.findByIdAndDelete(id).exec();
+		const deletedBoard = await this.boardModel.findByIdAndUpdate(id, { deleted_at: new Date() }).exec();
 
 		if (!deletedBoard) {
 			throw new NotFoundException(ERROR_MESSAGE_BOARD_NOT_FOUND);
@@ -140,6 +140,7 @@ export class BoardService {
 	private buildQuery(role: any, category: string, title: string) {
 		const query = {} as any;
 
+		query.deleted_at = null;
 		query.visible = { $in: role };
 		// 아래엔 겹치는 공백을 제거하기 위한 코드인데.. 나중에 가능하면 깔끔하게 개선해야겠다.
 		if (category !== '') {
