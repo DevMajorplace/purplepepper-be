@@ -5,7 +5,7 @@ import * as moment from 'moment-timezone';
 import { Model } from 'mongoose';
 import { setActiveQuery, setApprovedDateQuery, setBaseQuery } from 'src/common/utils/filter.util';
 import { paginate, PaginationResult } from 'src/common/utils/pagination.util';
-import { isNotEmptyUserId, validatePassword, validHierarchy } from 'src/common/utils/validation.util';
+import { validateNotEmptyFields, validatePassword, validHierarchy } from 'src/common/utils/validation.util';
 import { MonthlySales } from 'src/db/schema/monthly-sales.schema';
 import {
 	ERROR_MESSAGE_ALREADY_IN_STATUS,
@@ -57,7 +57,7 @@ export class AdminService {
 	// 공통 아이디 조회 함수
 	private async findUserById(userId: string, role: 'agency' | 'client') {
 		// 아이디 공백 검사
-		isNotEmptyUserId(userId);
+		validateNotEmptyFields(userId);
 
 		const query: any = {
 			user_id: userId,
@@ -110,7 +110,7 @@ export class AdminService {
 		role: 'client' | 'agency',
 	): Promise<R> {
 		// 아이디 공백 검사
-		isNotEmptyUserId(userId);
+		validateNotEmptyFields(userId);
 
 		// 활성 사용자와 역할 확인
 		const user = await this.userModel.findOne({ user_id: userId, is_active: true }).exec();
