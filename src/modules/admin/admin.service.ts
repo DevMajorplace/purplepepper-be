@@ -29,6 +29,7 @@ import { UserStatusUpdateResDto } from '../admin/dto/res/user.status.update.res.
 import { CashLogCategory, CashLogStatus } from '../client/types/cash-log.enum';
 import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
 import { AgencyListReqDto } from './dto/req/agency.list.req.dto';
+import { BusinessRegistrationReqDto } from './dto/req/business.registration.req.dto';
 import { CashRequestListReqDto } from './dto/req/cash.request.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
@@ -37,7 +38,8 @@ import { UsersStatusApproveReqDto } from './dto/req/user.status.approve.req.dto'
 import { UsersStatusDeclineReqDto } from './dto/req/user.status.decline.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
-import { AgencySalesStatResDto } from './dto/res/agency.sales.stat.dto';
+import { AgencySalesStatResDto } from './dto/res/agency.sales.stat.res.dto';
+import { BusinessRegistrationResDto } from './dto/res/business.registration.res.dto';
 import { CashRequestListResDto } from './dto/res/cash.request.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
@@ -196,7 +198,7 @@ export class AdminService {
 	}
 
 	// 가입 대기/거절 회원 조회
-	async findUsersByStatus(
+	async getUsersByStatus(
 		status: 'pending' | 'declined',
 		page: number = 1,
 		pageSize: number = 15,
@@ -219,6 +221,26 @@ export class AdminService {
 			...result,
 			data: result.data.map(user => new UserStatusResDto(user)),
 		};
+	}
+
+	// 사업자등록증 조회
+	async getBusinessRegistration(
+		businessRegistrationReqDto: BusinessRegistrationReqDto,
+	): Promise<BusinessRegistrationResDto> {
+		const userId = businessRegistrationReqDto.user_id;
+		//유저 아이디 공백검사
+		validateNotEmptyFields(userId);
+
+		// 활성화 광고주만 조회
+		const user = await this.userModel.findOne({ user_id: userId, is_active: true, role: 'client' }).exec();
+		// file_url 조회가 안되므로 예외처리
+		if (!user) {
+			throw new BadRequestException(ERROR_MESSAGE_INVALID_USER);
+		}
+
+		return new BusinessRegistrationResDto({
+			file_id: user.business_registration ? user.business_registration : '',
+		});
 	}
 
 	// 가입 상태 업데이트(단일, 다중 사용자 승인 거절)

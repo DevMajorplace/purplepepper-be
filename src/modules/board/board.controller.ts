@@ -15,7 +15,15 @@ import {
 	ValidationPipe,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiBody, ApiExtraModels, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
+import {
+	ApiBearerAuth,
+	ApiBody,
+	ApiConsumes,
+	ApiExtraModels,
+	ApiResponse,
+	ApiTags,
+	getSchemaPath,
+} from '@nestjs/swagger';
 import { Board } from '../../db/schema/board.schema';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { RoleGuard } from '../auth/guards/role.guard';
@@ -23,7 +31,6 @@ import { UserRoles } from '../auth/types/role.decorator';
 import { Role } from '../auth/types/role.enum';
 import { UploadService } from '../upload/upload.service';
 import { BoardService } from './board.service';
-import { BoardFileReqDto } from './dto/req/board.file.req.dto';
 import { BoardListReqDto } from './dto/req/board.list.req.dto';
 import { BoardReqDto } from './dto/req/board.req.dto';
 import { BoardDetailResDto } from './dto/res/board.detail.res.dto';
@@ -103,9 +110,26 @@ export class BoardController {
 
 	@Post('file')
 	@UserRoles(Role.Admin)
-	@ApiBody({ type: BoardFileReqDto, required: true })
+	@ApiConsumes('multipart/form-data') // 파일 업로드를 위한 MIME 타입 설정
+	@ApiBody({
+		description: 'Upload multiple files',
+		required: true,
+		type: 'multipart/form-data',
+		schema: {
+			type: 'object',
+			properties: {
+				files: {
+					type: 'array',
+					items: {
+						type: 'string',
+						format: 'binary', // 파일 형식 명시
+					},
+				},
+			},
+		},
+	})
 	@ApiResponse({ type: BoardFileResDto, isArray: true })
-	@UseInterceptors(FilesInterceptor('files'))
+	@UseInterceptors(FilesInterceptor('files')) // Multer 인터셉터 사용
 	async uploadFile(@UploadedFiles() files: Express.Multer.File[]): Promise<BoardFileResDto[]> {
 		return this.uploadService.uploadToS3(files);
 	}

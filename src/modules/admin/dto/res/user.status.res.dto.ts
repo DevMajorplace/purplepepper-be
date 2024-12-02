@@ -40,7 +40,7 @@ export class UserStatusResDto {
 	@IsDate()
 	@IsNotEmpty()
 	@ApiProperty({ description: '거절 일시' })
-	public readonly decliend_at?: Date;
+	public readonly declined_at?: Date;
 
 	@IsString()
 	@IsNotEmpty()
@@ -57,7 +57,7 @@ export class UserStatusResDto {
 		this.business_registration = user.business_registration;
 		// 상태에 따라 거절 관련 필드를 설정
 		if (user.status === 'declined') {
-			this.decliend_at = user.decliend_at ?? null;
+			this.declined_at = user.declined_at ?? null;
 			this.rejection_reason = user.rejection_reason ?? null;
 		}
 	}

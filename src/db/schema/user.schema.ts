@@ -64,7 +64,7 @@ export class User extends Document {
 	approved_at: Date;
 
 	@Prop()
-	decliend_at: Date;
+	declined_at: Date;
 
 	@Prop()
 	deleted_at: Date;

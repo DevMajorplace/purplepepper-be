@@ -10,6 +10,7 @@ import { CashLogStatus } from '../client/types/cash-log.enum';
 import { AdminService } from './admin.service';
 import { AgencyDetailReqDto } from './dto/req/agency.detail.req.dto';
 import { AgencyListReqDto } from './dto/req/agency.list.req.dto';
+import { BusinessRegistrationReqDto } from './dto/req/business.registration.req.dto';
 import { CashRequestListReqDto } from './dto/req/cash.request.list.req.dto';
 import { ClientDetailReqDto } from './dto/req/client.detail.req.dto';
 import { ClientListReqDto } from './dto/req/client.list.req.dto';
@@ -19,7 +20,8 @@ import { UsersStatusDeclineReqDto } from './dto/req/user.status.decline.req.dto'
 import { UserStatusQueryDto } from './dto/req/user.status.req.dto';
 import { AgencyDetailResDto } from './dto/res/agency.detail.res.dto';
 import { AgencyListResDto } from './dto/res/agency.list.res.dto';
-import { AgencySalesStatResDto } from './dto/res/agency.sales.stat.dto';
+import { AgencySalesStatResDto } from './dto/res/agency.sales.stat.res.dto';
+import { BusinessRegistrationResDto } from './dto/res/business.registration.res.dto';
 import { CashRequestListResDto } from './dto/res/cash.request.list.res.dto';
 import { ClientDetailResDto } from './dto/res/client.detail.res.dto';
 import { ClientListResDto } from './dto/res/client.list.res.dto';
@@ -53,15 +55,26 @@ export class AdminController {
 		},
 	})
 	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
-	async findUsersByStatus(@Query() query: UserStatusQueryDto): Promise<{
+	async getUsersByStatus(@Query() query: UserStatusQueryDto): Promise<{
 		data: UserStatusResDto[];
 		totalItems: number;
 		totalPages: number;
 		currentPage: number;
 		pageSize: number;
 	}> {
-		return this.adminService.findUsersByStatus(query.status, query.page, query.pageSize);
+		return this.adminService.getUsersByStatus(query.status, query.page, query.pageSize);
 	}
+
+	// 사업자 등록증 조회
+	@Get('business-registration')
+	@ApiResponse({ type: BusinessRegistrationResDto })
+	@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+	async getBusinessRegistration(
+		@Query() businessRegistrationReqDto: BusinessRegistrationReqDto,
+	): Promise<BusinessRegistrationResDto> {
+		return this.adminService.getBusinessRegistration(businessRegistrationReqDto);
+	}
+
 	// 가입 승인(단일, 다중 사용자)
 	@Patch('approve')
 	@ApiResponse({ type: UsersUpdateResultResDto })
