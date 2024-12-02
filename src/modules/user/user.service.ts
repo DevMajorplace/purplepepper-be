@@ -17,6 +17,7 @@ import {
 	ERROR_MESSAGE_HASH_FAILED,
 	ERROR_MESSAGE_INVALID_ROLE,
 	ERROR_MESSAGE_INVALID_TOKEN,
+	ERROR_MESSAGE_INVALID_USER,
 	ERROR_MESSAGE_NO_TOKEN,
 	ERROR_MESSAGE_PARENT_NOT_FOUND,
 	ERROR_MESSAGE_PERMISSION_DENIED,
@@ -110,6 +111,10 @@ export class UserService {
 		const existedUser = await this.userModel.findOne({ user_id: userId }).exec();
 		if (!existedUser) {
 			throw new BadRequestException(ERROR_MESSAGE_USER_LOGIN_FAILED);
+		}
+
+		if (!existedUser.is_active) {
+			throw new ForbiddenException(ERROR_MESSAGE_INVALID_USER);
 		}
 
 		// 승인 상태 확인
