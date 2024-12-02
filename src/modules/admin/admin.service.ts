@@ -112,8 +112,8 @@ export class AdminService {
 		// 아이디 공백 검사
 		validateNotEmptyFields(userId);
 
-		// 활성 사용자와 역할 확인
-		const user = await this.userModel.findOne({ user_id: userId, is_active: true }).exec();
+		// 업데이트하려는 계정 정보 확인
+		const user = await this.userModel.findOne({ user_id: userId }).exec();
 
 		if (!user) {
 			throw new BadRequestException(ERROR_MESSAGE_INVALID_USER);
